@@ -270,7 +270,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
         # Verify each lead has assignment_status='Assigned' and manager set
         for lead in Lead.objects.filter(branch=self.branch):
             self.assertEqual(lead.assignment_status, 'Assigned')
-            self.assertEqual(lead.assigned_manager, self.manager_user)
+            self.assertEqual(lead.assigned_sales_head, self.manager_user)
             self.assertIsNotNone(lead.assigned_at)
 
         # Verify setups have current_leads_assigned counters updated
@@ -413,7 +413,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
             phone="9998887771",
             branch=self.branch,
             assigned_telecaller=self.priya,
-            assigned_manager=self.manager_user,
+            assigned_sales_head=self.manager_user,
             assignment_status='Assigned',
             status=LeadStatus.NEW
         )
@@ -508,7 +508,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
             phone="9444000001",
             branch=self.branch,
             assigned_telecaller=self.arun,
-            assigned_manager=self.manager_user,
+            assigned_sales_head=self.manager_user,
             assignment_status='Assigned',
             status=LeadStatus.CONTACTED
         )
@@ -526,7 +526,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
             phone="9444000002",
             branch=self.branch,
             assigned_telecaller=self.arun,
-            assigned_manager=self.manager_user,
+            assigned_sales_head=self.manager_user,
             assignment_status='Assigned',
             status=LeadStatus.FOLLOW_UP
         )

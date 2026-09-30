@@ -523,7 +523,7 @@ def ensure_sample_leads_for_demo(user=None):
             'email': 'rahul@gmail.com',
             'status': 'Interested',
             'branch': branch,
-            'assigned_manager': manager,
+            'assigned_sales_head': manager,
             'assigned_telecaller': telecaller,
         }
     )
@@ -535,7 +535,7 @@ def ensure_sample_leads_for_demo(user=None):
             'email': 'arun@gmail.com',
             'status': 'Interested',
             'branch': branch,
-            'assigned_manager': manager,
+            'assigned_sales_head': manager,
             'assigned_telecaller': telecaller,
         }
     )
@@ -547,7 +547,7 @@ def ensure_sample_leads_for_demo(user=None):
             'email': 'vijay@gmail.com',
             'status': 'Interested',
             'branch': branch,
-            'assigned_manager': manager,
+            'assigned_sales_head': manager,
             'assigned_telecaller': telecaller,
         }
     )
@@ -559,7 +559,7 @@ def ensure_sample_leads_for_demo(user=None):
             'email': 'priya.lead@gmail.com',
             'status': 'Interested',
             'branch': branch,
-            'assigned_manager': manager,
+            'assigned_sales_head': manager,
             'assigned_telecaller': telecaller,
         }
     )
@@ -576,7 +576,7 @@ def ensure_sample_leads_for_demo(user=None):
                 email=f"lead_{i}@example.com",
                 status='New Lead',
                 branch=branch,
-                assigned_manager=manager,
+                assigned_sales_head=manager,
                 assigned_telecaller=telecaller,
             ))
     if leads_to_create:
@@ -755,7 +755,7 @@ def get_user_recordings_queryset(user):
     if user.is_sales_head_user:
         from accounts.permissions import get_accessible_branch_ids
         return CallRecording.objects.filter(
-            Q(lead__assigned_manager=user) |
+            Q(lead__assigned_sales_head=user) |
             Q(lead__branch_id__in=get_accessible_branch_ids(user))
         ).select_related('lead', 'drive_connection')
 

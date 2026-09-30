@@ -27,7 +27,7 @@ def assign_new_lead(lead, branch=None, source="Google Sheet", triggered_by=None)
     8. Update telecaller's current_leads_assigned counter.
     9. Record assignment in CRM Activity logs.
     """
-    from .models import LeadSetupConfig, TelecallerLeadSetup, AssignmentMethod
+    from .models import LeadSetupConfig, TelecallerLeadSetup, AssignmentMethod, LeadOwnerType, LeadAssignmentHistory
 
     target_branch = branch or getattr(lead, 'branch', None)
     if not target_branch:
@@ -167,9 +167,11 @@ def assign_new_lead(lead, branch=None, source="Google Sheet", triggered_by=None)
             selected_manager = User.objects.filter(role=UserRole.SALES_HEAD, is_active=True).first()
 
         # Update Lead atomically
+        previous_telecaller = lead.assigned_telecaller if lead.pk else None
         lead.branch = target_branch
         lead.assigned_telecaller = selected_telecaller
-        lead.assigned_manager = selected_manager
+        lead.assigned_sales_head = selected_manager
+        lead.current_owner_type = LeadOwnerType.TELECALLER
         lead.assignment_status = 'Assigned'
         lead.pending_assignment_reason = ''
         lead.assigned_at = timezone.now()
@@ -177,7 +179,8 @@ def assign_new_lead(lead, branch=None, source="Google Sheet", triggered_by=None)
             lead.save(update_fields=[
                 'branch',
                 'assigned_telecaller',
-                'assigned_manager',
+                'assigned_sales_head',
+                'current_owner_type',
                 'assignment_status',
                 'pending_assignment_reason',
                 'assigned_at',
@@ -185,6 +188,17 @@ def assign_new_lead(lead, branch=None, source="Google Sheet", triggered_by=None)
             ])
         else:
             lead.save()
+
+        LeadAssignmentHistory.objects.create(
+            lead=lead,
+            from_user=previous_telecaller,
+            to_user=selected_telecaller,
+            from_role=UserRole.TELECALLER if previous_telecaller else '',
+            to_role=UserRole.TELECALLER,
+            branch=target_branch,
+            reason=source,
+            assigned_by=triggered_by if getattr(triggered_by, 'is_authenticated', False) else None,
+        )
 
         # Atomically increment telecaller's assignment counter
         TelecallerLeadSetup.objects.filter(pk=best_setup.pk).update(
@@ -265,11 +279,11 @@ def apply_branch_lead_distribution(branch, user=None) -> tuple[int, int, str]:
     
     Guarantees:
     - Exactly reflects the configured percentages across all available leads in the database.
-    - Saves assignments directly to Lead.assigned_telecaller, Lead.assigned_manager, Lead.assignment_status='Assigned'.
+    - Saves assignments directly to Lead.assigned_telecaller, Lead.assigned_sales_head, Lead.assignment_status='Assigned'.
     - Updates telecaller current_leads_assigned counters.
     - Preserves all protected leads.
     """
-    from .models import Lead, LeadStatus, TelecallerLeadSetup, AssignmentMethod, LeadSetupConfig
+    from .models import Lead, LeadStatus, TelecallerLeadSetup, AssignmentMethod, LeadSetupConfig, LeadOwnerType, LeadAssignmentHistory
 
     if not branch:
         return 0, 0, "No branch provided."
@@ -372,21 +386,35 @@ def apply_branch_lead_distribution(branch, user=None) -> tuple[int, int, str]:
                 role=UserRole.SALES_HEAD, branch_access__branch=branch, is_active=True
             ).first()
 
+            previous_telecaller = lead.assigned_telecaller
             lead.branch = branch
             lead.assigned_telecaller = selected_tc
-            lead.assigned_manager = selected_mgr
+            lead.assigned_sales_head = selected_mgr
+            lead.current_owner_type = LeadOwnerType.TELECALLER
             lead.assignment_status = 'Assigned'
             lead.pending_assignment_reason = ''
             lead.assigned_at = now
             lead.save(update_fields=[
                 'branch',
                 'assigned_telecaller',
-                'assigned_manager',
+                'assigned_sales_head',
+                'current_owner_type',
                 'assignment_status',
                 'pending_assignment_reason',
                 'assigned_at',
                 'updated_at'
             ])
+
+            LeadAssignmentHistory.objects.create(
+                lead=lead,
+                from_user=previous_telecaller,
+                to_user=selected_tc,
+                from_role=UserRole.TELECALLER if previous_telecaller else '',
+                to_role=UserRole.TELECALLER,
+                branch=branch,
+                reason='Batch Lead Distribution',
+                assigned_by=user if getattr(user, 'is_authenticated', False) else None,
+            )
 
             best_setup.current_leads_assigned += 1
             assigned_count += 1

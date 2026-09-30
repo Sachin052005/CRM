@@ -83,6 +83,7 @@ class AdminLeadForm(forms.ModelForm):
 
     def save(self, commit=True):
         lead = super().save(commit=False)
+        lead.assigned_sales_head = self.cleaned_data.get('assigned_manager')
         if not lead.branch:
             lead.branch = infer_lead_branch(
                 manager=lead.assigned_manager,

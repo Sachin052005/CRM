@@ -164,7 +164,7 @@ class TelecallerDeleteFlowTestCase(TestCase):
                 channel=self.channel,
                 product=self.product,
                 assigned_telecaller=self.telecaller,
-                assigned_manager=self.manager_user,
+                assigned_sales_head=self.manager_user,
                 assignment_status='Assigned',
                 status=LeadStatus.NEW
             )

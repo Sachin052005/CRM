@@ -178,7 +178,7 @@ def admin_followup_create(request):
         lead = Lead.objects.filter(pk=lead_id).first()
         if lead:
             initial['lead'] = lead
-            initial['manager'] = lead.assigned_manager
+            initial['manager'] = lead.assigned_sales_head
             initial['telecaller'] = lead.assigned_telecaller
 
     if request.method == 'POST':

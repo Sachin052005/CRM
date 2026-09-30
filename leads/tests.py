@@ -35,7 +35,7 @@ class LeadManagementTests(TestCase):
             channel=self.channel,
             product=self.product,
             branch=self.branch,
-            assigned_manager=self.manager_a,
+            assigned_sales_head=self.manager_a,
             assigned_telecaller=self.telecaller_a,
             status=LeadStatus.NEW
         )
@@ -47,7 +47,7 @@ class LeadManagementTests(TestCase):
             channel=self.channel,
             product=self.product,
             branch=self.branch_b,
-            assigned_manager=self.manager_b,
+            assigned_sales_head=self.manager_b,
             assigned_telecaller=self.telecaller_b,
             status=LeadStatus.CONTACTED
         )
@@ -102,7 +102,7 @@ class LeadManagementTests(TestCase):
         })
         new_lead = Lead.objects.filter(phone='9123456780').first()
         self.assertIsNotNone(new_lead)
-        self.assertEqual(new_lead.assigned_manager, self.manager_a)
+        self.assertEqual(new_lead.assigned_sales_head, self.manager_a)
         self.assertEqual(new_lead.assigned_telecaller, self.telecaller_a)
 
     def test_telecaller_lead_create(self):
@@ -118,7 +118,7 @@ class LeadManagementTests(TestCase):
         new_lead = Lead.objects.filter(phone='9123456781').first()
         self.assertIsNotNone(new_lead)
         self.assertEqual(new_lead.assigned_telecaller, self.telecaller_a)
-        self.assertEqual(new_lead.assigned_manager, self.manager_a)
+        self.assertEqual(new_lead.assigned_sales_head, self.manager_a)
 
     def test_csv_upload_service(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -144,11 +144,11 @@ class LeadManagementTests(TestCase):
         lead2.save()
 
         # Both leads should have valid assigned manager and telecaller
-        self.assertIsNotNone(lead1.assigned_manager)
+        self.assertIsNotNone(lead1.assigned_sales_head)
         self.assertIsNotNone(lead1.assigned_telecaller)
         self.assertEqual(lead1.assigned_telecaller.branch, lead1.branch)
 
-        self.assertIsNotNone(lead2.assigned_manager)
+        self.assertIsNotNone(lead2.assigned_sales_head)
         self.assertIsNotNone(lead2.assigned_telecaller)
         self.assertEqual(lead2.assigned_telecaller.branch, lead2.branch)
 
@@ -164,7 +164,7 @@ class LeadManagementTests(TestCase):
         lead.save()
 
         # Must be assigned to active manager_b, NOT manager_a
-        self.assertEqual(lead.assigned_manager, self.manager_b)
+        self.assertEqual(lead.assigned_sales_head, self.manager_b)
         self.assertEqual(lead.assigned_telecaller, self.telecaller_b)
 
         # Restore
@@ -187,7 +187,7 @@ class LeadManagementTests(TestCase):
         self.assertEqual(self.lead_a.name, "Rahul Updated")
         self.assertIn("New notes added", self.lead_a.notes)
         # Assignment MUST remain preserved as manager_a, NOT overwritten
-        self.assertEqual(self.lead_a.assigned_manager, self.manager_a)
+        self.assertEqual(self.lead_a.assigned_sales_head, self.manager_a)
         self.assertEqual(self.lead_a.assigned_telecaller, self.telecaller_a)
 
     def test_branch_auto_inference_when_omitted(self):

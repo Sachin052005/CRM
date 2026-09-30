@@ -84,3 +84,95 @@ def can_access_telecaller(user, telecaller_user):
     if user.role in (UserRole.BRANCH_HEAD, UserRole.COUNSELOR):
         return telecaller_user.branch_id == user.branch_id
     return False
+
+
+def can_view_lead(user, lead):
+    return can_access_lead(user, lead)
+
+
+def can_edit_lead(user, lead):
+    if not user.is_authenticated:
+        return False
+    if user.is_admin_user:
+        return True
+    if user.role == UserRole.SALES_HEAD:
+        return lead.branch_id in get_accessible_branch_ids(user)
+    if user.role in (UserRole.BRANCH_HEAD, UserRole.COUNSELOR):
+        return lead.branch_id == user.branch_id
+    if user.is_telecaller_user:
+        return lead.assigned_telecaller_id == user.id
+    return False
+
+
+def can_assign_lead(user, lead):
+    if not user.is_authenticated:
+        return False
+    if user.is_admin_user:
+        return True
+    if user.role in (UserRole.SALES_HEAD, UserRole.BRANCH_HEAD):
+        return lead.branch_id in get_accessible_branch_ids(user)
+    if user.role == UserRole.COUNSELOR:
+        return lead.branch_id == user.branch_id
+    return False
+
+
+def can_reassign_lead(user, lead, target_user):
+    """target_user is who the lead would be reassigned TO."""
+    if not user.is_authenticated:
+        return False
+    if user.is_admin_user:
+        return True
+    if not can_assign_lead(user, lead):
+        return False
+    if lead.branch_id not in get_accessible_branch_ids(user):
+        return False
+    if target_user.branch_id and lead.branch_id and target_user.branch_id != lead.branch_id:
+        return False
+    return True
+
+
+def can_change_lead_status(user, lead, new_status):
+    if not user.is_authenticated:
+        return False
+    if user.is_admin_user:
+        return True
+    return can_edit_lead(user, lead)
+
+
+def can_view_branch(user, branch):
+    if not user.is_authenticated:
+        return False
+    if user.is_admin_user:
+        return True
+    return branch.id in get_accessible_branch_ids(user)
+
+
+def can_manage_user(user, target_user):
+    """Can `user` administer (edit/deactivate/etc.) `target_user`?"""
+    if not user.is_authenticated:
+        return False
+    if user.is_admin_user:
+        return True
+    if user.role == UserRole.SALES_HEAD:
+        return (
+            target_user.role in (UserRole.BRANCH_HEAD, UserRole.COUNSELOR, UserRole.TELECALLER)
+            and target_user.branch_id in get_accessible_branch_ids(user)
+        )
+    if user.role == UserRole.BRANCH_HEAD:
+        return target_user.role in (UserRole.COUNSELOR, UserRole.TELECALLER) and target_user.branch_id == user.branch_id
+    return False
+
+
+def can_create_user(user, target_role, branch):
+    """Can `user` create a new user with role `target_role` in `branch`?"""
+    if not user.is_authenticated:
+        return False
+    if user.is_admin_user:
+        return True
+    if user.role == UserRole.SALES_HEAD:
+        return target_role == UserRole.BRANCH_HEAD and branch is not None and branch.id in get_accessible_branch_ids(user)
+    if user.role == UserRole.BRANCH_HEAD:
+        return target_role in (UserRole.COUNSELOR, UserRole.TELECALLER) and branch is not None and branch.id == user.branch_id
+    if user.role == UserRole.COUNSELOR:
+        return target_role == UserRole.TELECALLER and branch is not None and branch.id == user.branch_id
+    return False

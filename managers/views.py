@@ -100,7 +100,7 @@ def admin_manager_detail(request, pk):
         followup_count=Count('telecaller_followups', distinct=True)
     )
 
-    total_leads = Lead.objects.filter(Q(assigned_manager=manager) | Q(assigned_telecaller__branch_id__in=branch_ids)).count()
+    total_leads = Lead.objects.filter(Q(assigned_sales_head=manager) | Q(assigned_telecaller__branch_id__in=branch_ids)).count()
     total_calls = CallHistory.objects.filter(Q(manager=manager) | Q(telecaller__branch_id__in=branch_ids)).count()
     pending_followups = FollowUp.objects.filter(
         Q(manager=manager) | Q(telecaller__branch_id__in=branch_ids),
@@ -217,7 +217,7 @@ def manager_dashboard(request):
 
     # Real database metrics scoped to Sales Head
     my_leads_count = Lead.objects.filter(
-        Q(assigned_manager=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
+        Q(assigned_sales_head=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
     ).count()
     my_telecallers_count = telecallers.count()
 
@@ -252,7 +252,7 @@ def manager_dashboard(request):
 
     # Lead status distribution for chart
     status_counts = Lead.objects.filter(
-        Q(assigned_manager=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
+        Q(assigned_sales_head=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
     ).values('status').annotate(total=Count('id'))
 
     status_dict = {item['status']: item['total'] for item in status_counts}

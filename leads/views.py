@@ -48,6 +48,7 @@ from .assignment import (
     apply_branch_lead_distribution,
     retry_pending_assignments
 )
+from .handoff_service import change_lead_status
 
 # ==========================================
 # ADMIN: LEAD MANAGEMENT
@@ -69,7 +70,7 @@ def admin_leads_list(request):
     sort_by = request.GET.get('sort', '-created_at')
 
     leads_qs = Lead.objects.select_related(
-        'channel', 'product', 'branch', 'assigned_manager', 'assigned_telecaller'
+        'channel', 'product', 'branch', 'assigned_sales_head', 'assigned_telecaller'
     ).prefetch_related('duplicate_records', 'sheet_mappings__connection')
 
     if search_query:
@@ -82,7 +83,7 @@ def admin_leads_list(request):
     if status_filter:
         leads_qs = leads_qs.filter(status=status_filter)
     if manager_filter:
-        leads_qs = leads_qs.filter(assigned_manager_id=manager_filter)
+        leads_qs = leads_qs.filter(assigned_sales_head_id=manager_filter)
     if telecaller_filter:
         leads_qs = leads_qs.filter(assigned_telecaller_id=telecaller_filter)
     if channel_filter:
@@ -215,9 +216,9 @@ def admin_lead_create(request):
             )
             messages.success(request, f"Lead '{lead.name}' created successfully.")
             from activities.services import create_notification
-            if lead.assigned_manager:
+            if lead.assigned_sales_head:
                 create_notification(
-                    recipient=lead.assigned_manager,
+                    recipient=lead.assigned_sales_head,
                     title="New Lead Assigned",
                     message=f"Admin assigned new lead '{lead.name}' ({lead.phone}) to your team.",
                     notification_type="lead_assigned"
@@ -238,7 +239,7 @@ def admin_lead_create(request):
 @admin_required
 def admin_lead_detail(request, pk):
     lead = get_object_or_404(
-        Lead.objects.select_related('channel', 'product', 'branch', 'assigned_manager', 'assigned_telecaller'),
+        Lead.objects.select_related('channel', 'product', 'branch', 'assigned_sales_head', 'assigned_telecaller'),
         pk=pk
     )
     followups = FollowUp.objects.filter(lead=lead).order_by('-created_at')
@@ -333,7 +334,7 @@ def manager_leads_list(request):
     telecaller_ids = list(telecallers.values_list('id', flat=True))
 
     leads_qs = Lead.objects.filter(
-        Q(assigned_manager=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
+        Q(assigned_sales_head=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
     ).select_related('channel', 'product', 'assigned_telecaller', 'branch')
 
     search_query = request.GET.get('search', '').strip()
@@ -403,7 +404,7 @@ def manager_lead_create(request):
                 return redirect('manager_lead_detail', pk=existing_lead.pk)
 
             lead = form.save(commit=False)
-            lead.assigned_manager = manager
+            lead.assigned_sales_head = manager
             if not lead.branch and manager.branch:
                 lead.branch = manager.branch
             lead.save()
@@ -453,7 +454,7 @@ def manager_lead_import(request):
 @sales_head_required
 def manager_lead_detail(request, pk):
     lead = get_object_or_404(
-        Lead.objects.select_related('channel', 'product', 'branch', 'assigned_manager', 'assigned_telecaller'),
+        Lead.objects.select_related('channel', 'product', 'branch', 'assigned_sales_head', 'assigned_telecaller'),
         pk=pk
     )
     if not can_access_lead(request.user, lead):
@@ -602,7 +603,7 @@ def telecaller_lead_create(request):
 
             lead = form.save(commit=False)
             lead.assigned_telecaller = telecaller
-            lead.assigned_manager = branch_sales_head
+            lead.assigned_sales_head = branch_sales_head
             lead.branch = telecaller.branch
             lead.status = LeadStatus.NEW
             lead.save()
@@ -644,7 +645,7 @@ def telecaller_lead_import(request):
 @telecaller_required
 def telecaller_lead_detail(request, pk):
     lead = get_object_or_404(
-        Lead.objects.select_related('channel', 'product', 'branch', 'assigned_manager', 'assigned_telecaller'),
+        Lead.objects.select_related('channel', 'product', 'branch', 'assigned_sales_head', 'assigned_telecaller'),
         pk=pk
     )
     if not can_access_lead(request.user, lead):
@@ -727,7 +728,7 @@ def get_offline_leads_queryset(request, connection_id=None):
         is_offline=True
     ).filter(
         Q(sheet_mappings__connection__in=active_gs) | Q(source__in=allowed_sources)
-    ).distinct().select_related('channel', 'product', 'branch', 'assigned_manager', 'assigned_telecaller')
+    ).distinct().select_related('channel', 'product', 'branch', 'assigned_sales_head', 'assigned_telecaller')
 
     # If connection_id is specified (e.g. from [ View Leads ]), filter to that connection only
     req_conn_id = connection_id or request.GET.get('connection_id')
@@ -1660,8 +1661,10 @@ def admin_lead_update_status(request, pk):
         return JsonResponse({'success': False, 'error': f"Invalid status: '{new_status}'."}, status=400)
 
     old_status = lead.status
-    lead.status = matched_status
-    lead.save(update_fields=['status', 'updated_at'])
+    try:
+        change_lead_status(lead, matched_status, request.user, remarks='')
+    except PermissionDenied:
+        return JsonResponse({'success': False, 'error': "You do not have permission to change this lead's status."}, status=403)
 
     # If status is 'Follow-up', ensure a pending FollowUp record exists
     if matched_status == LeadStatus.FOLLOW_UP:
@@ -1669,8 +1672,8 @@ def admin_lead_update_status(request, pk):
         if not existing_fu:
             FollowUp.objects.create(
                 lead=lead,
-                assigned_user=lead.assigned_telecaller or lead.assigned_manager or request.user,
-                manager=lead.assigned_manager,
+                assigned_user=lead.assigned_telecaller or lead.assigned_sales_head or request.user,
+                manager=lead.assigned_sales_head,
                 telecaller=lead.assigned_telecaller,
                 follow_up_date=timezone.localdate() + timezone.timedelta(days=1),
                 follow_up_time=timezone.localtime().time(),
@@ -1722,7 +1725,7 @@ def render_status_pipeline_view(request, status_target, page_title, page_descrip
     branch_filter = request.GET.get('branch', '').strip()
 
     leads_qs = Lead.objects.filter(status=status_target).select_related(
-        'channel', 'product', 'branch', 'assigned_manager', 'assigned_telecaller'
+        'channel', 'product', 'branch', 'assigned_sales_head', 'assigned_telecaller'
     )
 
     selected_branch = get_admin_selected_branch(request)
@@ -1740,7 +1743,7 @@ def render_status_pipeline_view(request, status_target, page_title, page_descrip
         )
 
     if manager_filter:
-        leads_qs = leads_qs.filter(assigned_manager_id=manager_filter)
+        leads_qs = leads_qs.filter(assigned_sales_head_id=manager_filter)
     if telecaller_filter:
         leads_qs = leads_qs.filter(assigned_telecaller_id=telecaller_filter)
     if product_filter:
@@ -2097,7 +2100,7 @@ def _fetch_or_seed_google_form_leads(conn, triggered_by=None):
                 email=item['email'],
                 branch=b,
                 assigned_telecaller=tc,
-                assigned_manager=_branch_sales_head(b),
+                assigned_sales_head=_branch_sales_head(b),
                 status=item['status'],
                 source='Google Form',
                 is_offline=True,
@@ -2110,7 +2113,7 @@ def _fetch_or_seed_google_form_leads(conn, triggered_by=None):
             lead.assigned_telecaller = tc
             sales_head = _branch_sales_head(b)
             if sales_head:
-                lead.assigned_manager = sales_head
+                lead.assigned_sales_head = sales_head
             lead.status = item['status']
             lead.is_offline = True
             lead.source = 'Google Form'
@@ -2321,7 +2324,7 @@ def admin_lead_duplicate_info(request, pk):
     Returns original lead and duplicate record details for the [ View Duplicate ] modal.
     """
     lead = get_object_or_404(
-        Lead.objects.select_related('branch', 'assigned_telecaller', 'assigned_manager'),
+        Lead.objects.select_related('branch', 'assigned_telecaller', 'assigned_sales_head'),
         pk=pk
     )
     dup_records = lead.duplicate_records.select_related('branch').order_by('-submitted_at')

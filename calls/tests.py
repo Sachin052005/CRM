@@ -19,7 +19,7 @@ class CallExecutionAndPersistenceTests(TestCase):
         self.lead = Lead.objects.create(
             name="Vikram Singh",
             phone="9876500000",
-            assigned_manager=self.manager,
+            assigned_sales_head=self.manager,
             assigned_telecaller=self.telecaller,
             status=LeadStatus.NEW
         )

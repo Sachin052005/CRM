@@ -48,7 +48,7 @@ def admin_dashboard(request):
         followups_qs = followups_qs.filter(lead__branch_id=branch_filter)
 
     if manager_filter:
-        leads_qs = leads_qs.filter(assigned_manager_id=manager_filter)
+        leads_qs = leads_qs.filter(assigned_sales_head_id=manager_filter)
         calls_qs = calls_qs.filter(manager_id=manager_filter)
         followups_qs = followups_qs.filter(manager_id=manager_filter)
     if telecaller_filter:
@@ -125,7 +125,7 @@ def admin_dashboard(request):
     )
 
     # Recent Records
-    recent_leads = leads_qs.select_related('channel', 'assigned_manager', 'assigned_telecaller').order_by('-created_at')[:6]
+    recent_leads = leads_qs.select_related('channel', 'assigned_sales_head', 'assigned_telecaller').order_by('-created_at')[:6]
     recent_activities = activities_qs.order_by('-timestamp')[:6]
     recent_calls = calls_qs.select_related('lead', 'caller', 'manager', 'telecaller').order_by('-call_started_at')[:6]
 
@@ -226,7 +226,7 @@ def manager_reports(request):
     telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=get_accessible_branch_ids(manager))
     telecaller_ids = list(telecallers.values_list('id', flat=True))
 
-    team_lead_filter = Q(assigned_manager=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
+    team_lead_filter = Q(assigned_sales_head=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
     team_call_filter = Q(manager=manager) | Q(caller=manager) | Q(caller_id__in=telecaller_ids)
 
     # Scoped aggregations

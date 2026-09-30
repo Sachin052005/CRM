@@ -13,6 +13,22 @@ class LeadStatus(models.TextChoices):
     LOST = 'Lost', 'Lost'
     LATER = 'Later', 'Later'
     DISCUSSION = 'Discussion', 'Discussion'
+    VISIT_SCHEDULED = 'Visit Scheduled', 'Visit Scheduled'
+    VISITED = 'Visited', 'Visited'
+    COUNSELING = 'Counseling', 'Counseling'
+    JOINED = 'Joined', 'Joined'
+    NOT_INTERESTED = 'Not Interested', 'Not Interested'
+    NO_ANSWER = 'No Answer', 'No Answer'
+    BUSY = 'Busy', 'Busy'
+    NOT_JOINED = 'Not Joined', 'Not Joined'
+
+class LeadOwnerType(models.TextChoices):
+    UNASSIGNED = 'UNASSIGNED', 'Unassigned'
+    TELECALLER = 'TELECALLER', 'Telecaller'
+    COUNSELOR = 'COUNSELOR', 'Counselor'
+    BRANCH_HEAD = 'BRANCH_HEAD', 'Branch Head'
+    SALES_HEAD = 'SALES_HEAD', 'Sales Head'
+    ADMIN = 'ADMIN', 'Admin'
 
 class Lead(models.Model):
     name = models.CharField(max_length=150)
@@ -31,7 +47,7 @@ class Lead(models.Model):
         choices=LeadStatus.choices,
         default=LeadStatus.NEW
     )
-    assigned_manager = models.ForeignKey(
+    assigned_sales_head = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
@@ -44,6 +60,28 @@ class Lead(models.Model):
         null=True,
         blank=True,
         related_name='telecaller_leads'
+    )
+    assigned_branch_head = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='branch_head_leads',
+        limit_choices_to={'role': 'BRANCH_HEAD'}
+    )
+    assigned_counselor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='counselor_leads',
+        limit_choices_to={'role': 'COUNSELOR'}
+    )
+    current_owner_type = models.CharField(
+        max_length=20,
+        choices=LeadOwnerType.choices,
+        default=LeadOwnerType.UNASSIGNED,
+        db_index=True
     )
     product = models.ForeignKey(
         'products.Product',
@@ -85,6 +123,11 @@ class Lead(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.phone} ({self.status})"
+
+    @property
+    def assigned_manager(self):
+        """Backward-compat read-only alias for templates not yet updated to assigned_sales_head."""
+        return self.assigned_sales_head
 
     @property
     def masked_phone(self):
@@ -131,6 +174,50 @@ class Lead(models.Model):
             raise ValidationError({
                 'assigned_telecaller': f"Telecaller '{self.assigned_telecaller.username}' belongs to a different branch."
             })
+        if self.assigned_counselor_id and self.branch_id and self.assigned_counselor.branch_id and self.assigned_counselor.branch_id != self.branch_id:
+            raise ValidationError({
+                'assigned_counselor': f"Counselor '{self.assigned_counselor.username}' belongs to a different branch."
+            })
+        if self.assigned_branch_head_id and self.branch_id and self.assigned_branch_head.branch_id and self.assigned_branch_head.branch_id != self.branch_id:
+            raise ValidationError({
+                'assigned_branch_head': f"Branch Head '{self.assigned_branch_head.username}' belongs to a different branch."
+            })
+
+
+class LeadAssignmentHistory(models.Model):
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name='assignment_history')
+    from_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    to_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    from_role = models.CharField(max_length=20, blank=True, default='')
+    to_role = models.CharField(max_length=20, blank=True, default='')
+    branch = models.ForeignKey('branches.Branch', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    reason = models.CharField(max_length=255, blank=True, default='')
+    assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = 'Lead assignment histories'
+
+    def __str__(self):
+        return f"{self.lead_id}: {self.from_role or '-'} -> {self.to_role or '-'} ({self.created_at:%Y-%m-%d %H:%M})"
+
+
+class LeadStatusHistory(models.Model):
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name='status_history')
+    old_status = models.CharField(max_length=30, blank=True, default='')
+    new_status = models.CharField(max_length=30)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    remarks = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = 'Lead status histories'
+
+    def __str__(self):
+        return f"{self.lead_id}: {self.old_status or '-'} -> {self.new_status} ({self.created_at:%Y-%m-%d %H:%M})"
+
 
 class LeadImportHistory(models.Model):
     file_name = models.CharField(max_length=255)

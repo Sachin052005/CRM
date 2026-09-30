@@ -203,9 +203,9 @@ def assign_lead_to_team(lead: Lead, branch: Branch = None, method: str = 'Automa
         if branch_managers.exists():
             managers = branch_managers
 
-    assigned_manager = managers.annotate(cnt=Count('manager_leads')).order_by('cnt', 'id').first()
-    if assigned_manager:
-        lead.assigned_manager = assigned_manager
+    assigned_sales_head = managers.annotate(cnt=Count('manager_leads')).order_by('cnt', 'id').first()
+    if assigned_sales_head:
+        lead.assigned_sales_head = assigned_sales_head
 
         # Find telecallers in this branch
         telecallers = User.objects.filter(

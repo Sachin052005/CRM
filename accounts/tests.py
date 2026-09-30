@@ -166,3 +166,79 @@ class AccountsAndAuthTests(TestCase):
             validator.validate("SecretRajesh123!", user=user)
         self.assertTrue(any("contain your username" in msg for msg in ctx.exception.messages))
 
+
+class LeadPermissionFunctionsTests(TestCase):
+    """Covers the centralized lead/user authorization helpers added for the hierarchy rework."""
+
+    def setUp(self):
+        self.branch_a = Branch.objects.create(name="Perm Branch A")
+        self.branch_b = Branch.objects.create(name="Perm Branch B")
+
+        self.admin = User.objects.create_user(
+            username="perm_admin", password="pwd", role=UserRole.ADMIN, is_staff=True, is_superuser=True
+        )
+        self.sales_head_a = User.objects.create_user(username="perm_sh_a", password="pwd", role=UserRole.SALES_HEAD)
+        SalesHeadBranchAccess.objects.create(sales_head=self.sales_head_a, branch=self.branch_a)
+        self.branch_head_a = User.objects.create_user(
+            username="perm_bh_a", password="pwd", role=UserRole.BRANCH_HEAD, branch=self.branch_a
+        )
+        self.branch_head_b = User.objects.create_user(
+            username="perm_bh_b", password="pwd", role=UserRole.BRANCH_HEAD, branch=self.branch_b
+        )
+        self.counselor_a = User.objects.create_user(
+            username="perm_counselor_a", password="pwd", role=UserRole.COUNSELOR, branch=self.branch_a
+        )
+        self.telecaller_a = User.objects.create_user(
+            username="perm_tc_a", password="pwd", role=UserRole.TELECALLER, branch=self.branch_a
+        )
+        self.telecaller_b = User.objects.create_user(
+            username="perm_tc_b", password="pwd", role=UserRole.TELECALLER, branch=self.branch_b
+        )
+
+    def test_can_reassign_lead_rejects_cross_branch_target(self):
+        from accounts.permissions import can_reassign_lead
+        from leads.models import Lead
+
+        lead = Lead.objects.create(name="Perm Lead", phone="9000000010", branch=self.branch_a)
+
+        # Sales Head A may reassign within branch A...
+        self.assertTrue(can_reassign_lead(self.sales_head_a, lead, self.telecaller_a))
+        # ...but not to a telecaller belonging to branch B.
+        self.assertFalse(can_reassign_lead(self.sales_head_a, lead, self.telecaller_b))
+        # Admin may override across branches.
+        self.assertTrue(can_reassign_lead(self.admin, lead, self.telecaller_b))
+
+    def test_can_create_user_role_scoping(self):
+        from accounts.permissions import can_create_user
+
+        # Admin can create anyone anywhere.
+        self.assertTrue(can_create_user(self.admin, UserRole.SALES_HEAD, self.branch_a))
+
+        # Sales Head can create a Branch Head only in an accessible branch.
+        self.assertTrue(can_create_user(self.sales_head_a, UserRole.BRANCH_HEAD, self.branch_a))
+        self.assertFalse(can_create_user(self.sales_head_a, UserRole.BRANCH_HEAD, self.branch_b))
+        self.assertFalse(can_create_user(self.sales_head_a, UserRole.COUNSELOR, self.branch_a))
+
+        # Branch Head can create Counselors/Telecallers only in their own branch.
+        self.assertTrue(can_create_user(self.branch_head_a, UserRole.COUNSELOR, self.branch_a))
+        self.assertTrue(can_create_user(self.branch_head_a, UserRole.TELECALLER, self.branch_a))
+        self.assertFalse(can_create_user(self.branch_head_a, UserRole.COUNSELOR, self.branch_b))
+        self.assertFalse(can_create_user(self.branch_head_a, UserRole.BRANCH_HEAD, self.branch_a))
+
+        # Counselor can create only Telecallers in their own branch.
+        self.assertTrue(can_create_user(self.counselor_a, UserRole.TELECALLER, self.branch_a))
+        self.assertFalse(can_create_user(self.counselor_a, UserRole.TELECALLER, self.branch_b))
+        self.assertFalse(can_create_user(self.counselor_a, UserRole.COUNSELOR, self.branch_a))
+
+        # Telecaller cannot create anyone.
+        self.assertFalse(can_create_user(self.telecaller_a, UserRole.TELECALLER, self.branch_a))
+
+    def test_can_manage_user_scoping(self):
+        from accounts.permissions import can_manage_user
+
+        self.assertTrue(can_manage_user(self.sales_head_a, self.branch_head_a))
+        self.assertFalse(can_manage_user(self.sales_head_a, self.branch_head_b))
+        self.assertTrue(can_manage_user(self.branch_head_a, self.telecaller_a))
+        self.assertFalse(can_manage_user(self.branch_head_a, self.telecaller_b))
+        self.assertFalse(can_manage_user(self.telecaller_a, self.telecaller_b))
+

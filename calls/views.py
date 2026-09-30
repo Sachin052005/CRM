@@ -12,6 +12,7 @@ from accounts.permissions import admin_required, sales_head_required, telecaller
 from branches.models import Branch
 from branches.utils import get_admin_selected_branch
 from leads.models import Lead, LeadStatus
+from leads.handoff_service import change_lead_status
 from followups.models import FollowUp, FollowUpStatus
 from activities.utils import log_activity
 from .models import CallHistory, CallStatus, CallOutcome
@@ -71,7 +72,7 @@ def start_call_record(request):
 
     # No pending lock: create active call record
     now = timezone.now()
-    manager = lead.assigned_manager or (_branch_sales_head(caller.branch) if caller.is_telecaller_user else None)
+    manager = lead.assigned_sales_head or (_branch_sales_head(caller.branch) if caller.is_telecaller_user else None)
     telecaller = caller if caller.is_telecaller_user else lead.assigned_telecaller
 
     new_call = CallHistory.objects.create(
@@ -202,7 +203,7 @@ def complete_call_record(request):
     started_at = now - timezone.timedelta(seconds=duration) if duration > 0 else now
 
     # Determine supervising manager & telecaller references
-    manager = lead.assigned_manager or (_branch_sales_head(caller.branch) if caller.is_telecaller_user else None)
+    manager = lead.assigned_sales_head or (_branch_sales_head(caller.branch) if caller.is_telecaller_user else None)
     telecaller = caller if caller.is_telecaller_user else lead.assigned_telecaller
 
     if call_record:
@@ -234,7 +235,7 @@ def complete_call_record(request):
 
     # 2. Update Lead status and append note
     if lead_status:
-        lead.status = lead_status
+        change_lead_status(lead, lead_status, caller, remarks=notes or '')
     if notes:
         lead.notes = f"[{now.strftime('%Y-%m-%d %H:%M')}] Call by {caller.username} ({call_outcome}): {notes}\n" + (lead.notes or '')
     lead.save()
@@ -391,7 +392,7 @@ def admin_call_create(request):
         lead = Lead.objects.filter(pk=lead_id).first()
         if lead:
             initial['lead'] = lead
-            initial['manager'] = lead.assigned_manager
+            initial['manager'] = lead.assigned_sales_head
             initial['telecaller'] = lead.assigned_telecaller
 
     if request.method == 'POST':

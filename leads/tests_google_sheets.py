@@ -134,10 +134,10 @@ class GoogleSheetsIntegrationTests(TestCase):
         """Verify assigned telecaller always reports to assigned manager."""
         sample_lead = Lead(name="Test", phone="9900000000")
         assign_lead_to_team(sample_lead, self.branch, method='Automatic')
-        self.assertEqual(sample_lead.assigned_manager, self.manager)
+        self.assertEqual(sample_lead.assigned_sales_head, self.manager)
         self.assertEqual(sample_lead.assigned_telecaller, self.telecaller)
         self.assertEqual(sample_lead.assigned_telecaller.branch, self.branch)
-        self.assertIn(self.branch, [a.branch for a in sample_lead.assigned_manager.branch_access.all()])
+        self.assertIn(self.branch, [a.branch for a in sample_lead.assigned_sales_head.branch_access.all()])
 
     @patch('leads.google_sheets.fetch_sheet_data')
     def test_sync_google_sheet_insert_and_update(self, mock_fetch):
@@ -163,7 +163,7 @@ class GoogleSheetsIntegrationTests(TestCase):
         self.assertTrue(lead_john.is_offline)
         self.assertEqual(lead_john.branch, self.branch)
         self.assertEqual(lead_john.product, self.product)
-        self.assertEqual(lead_john.assigned_manager, self.manager)
+        self.assertEqual(lead_john.assigned_sales_head, self.manager)
         self.assertEqual(lead_john.assigned_telecaller, self.telecaller)
 
         # Verify mapping records
@@ -432,7 +432,7 @@ class GoogleSheetsIntegrationTests(TestCase):
             name="Rohit Verma",
             phone="9876543302",
             status=LeadStatus.NEW,
-            assigned_manager=self.manager,
+            assigned_sales_head=self.manager,
             assigned_telecaller=self.telecaller
         )
         self.client.login(username="admin_test", password="adminpassword")

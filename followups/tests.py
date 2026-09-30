@@ -41,7 +41,7 @@ class AdminFollowUpsModuleTests(TestCase):
             branch=self.branch1,
             channel=self.channel,
             product=self.product,
-            assigned_manager=self.manager_a,
+            assigned_sales_head=self.manager_a,
             assigned_telecaller=self.telecaller_a,
             status=LeadStatus.NEW
         )
@@ -202,7 +202,7 @@ class AdminFollowUpsModuleTests(TestCase):
             branch=self.branch2,
             channel=self.channel,
             product=self.product,
-            assigned_manager=self.manager_b,
+            assigned_sales_head=self.manager_b,
             status=LeadStatus.NEW
         )
         FollowUp.objects.create(

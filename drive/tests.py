@@ -68,7 +68,7 @@ class DriveModuleIntegrationTests(TestCase):
             phone='9876543210',
             email='rahul@gmail.com',
             status=LeadStatus.INTERESTED,
-            assigned_manager=self.manager,
+            assigned_sales_head=self.manager,
             assigned_telecaller=self.telecaller1,
             branch=self.branch
         )

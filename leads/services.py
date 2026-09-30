@@ -46,7 +46,7 @@ def import_leads_file(uploaded_file, user):
     errors = []
 
     # Scoping attributes based on user role
-    assigned_manager = None
+    assigned_sales_head = None
     assigned_telecaller = None
     default_branch = None
 
@@ -55,9 +55,9 @@ def import_leads_file(uploaded_file, user):
         default_branch = user.branch
         if default_branch:
             access = default_branch.sales_head_access.select_related('sales_head').first()
-            assigned_manager = access.sales_head if access else None
+            assigned_sales_head = access.sales_head if access else None
     elif user.is_sales_head_user:
-        assigned_manager = user
+        assigned_sales_head = user
         default_branch = user.branch
 
     with transaction.atomic():
@@ -123,10 +123,10 @@ def import_leads_file(uploaded_file, user):
 
             if user.is_telecaller_user:
                 new_lead.assigned_telecaller = assigned_telecaller
-                new_lead.assigned_manager = assigned_manager
+                new_lead.assigned_sales_head = assigned_sales_head
                 new_lead.branch = branch_obj or default_branch
             elif user.is_sales_head_user:
-                new_lead.assigned_manager = assigned_manager
+                new_lead.assigned_sales_head = assigned_sales_head
                 # Auto-assign an active telecaller within this sales head's accessible branches
                 from accounts.permissions import get_accessible_branch_ids
                 tc_qs = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=get_accessible_branch_ids(user), is_active=True)
