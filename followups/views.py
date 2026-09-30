@@ -22,12 +22,21 @@ def update_followup_status(request, pk, new_status):
     followup = get_object_or_404(FollowUp, pk=pk)
     user = request.user
 
-    # Security check: telecaller can only update their own follow-ups
-    if user.is_telecaller_user and followup.telecaller != user and followup.assigned_user != user:
-        raise PermissionDenied("Permission denied: You cannot modify this follow-up.")
-    if user.is_sales_head_user:
-        branch_ids = get_accessible_branch_ids(user)
-        if followup.manager != user and followup.assigned_user != user and not (followup.telecaller and followup.telecaller.branch_id in branch_ids):
+    # Security check: every non-admin role must be explicitly authorized; unrecognized
+    # roles are denied by default rather than silently falling through unchecked.
+    if not user.is_admin_user:
+        if user.is_telecaller_user:
+            if followup.telecaller != user and followup.assigned_user != user:
+                raise PermissionDenied("Permission denied: You cannot modify this follow-up.")
+        elif user.is_sales_head_user:
+            branch_ids = get_accessible_branch_ids(user)
+            if followup.manager != user and followup.assigned_user != user and not (followup.telecaller and followup.telecaller.branch_id in branch_ids):
+                raise PermissionDenied("Permission denied: You cannot modify this follow-up.")
+        elif user.is_branch_head_user or user.is_counselor_user:
+            from accounts.permissions import can_view_lead
+            if not (followup.lead and can_view_lead(user, followup.lead)):
+                raise PermissionDenied("Permission denied: You cannot modify this follow-up.")
+        else:
             raise PermissionDenied("Permission denied: You cannot modify this follow-up.")
 
     old_status = followup.status

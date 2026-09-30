@@ -238,3 +238,50 @@ class AdminFollowUpsModuleTests(TestCase):
         fu_done = FollowUp(lead=self.lead, follow_up_date=past, status=FollowUpStatus.COMPLETED)
         self.assertFalse(fu_done.is_overdue)
         self.assertEqual(fu_done.display_status, 'Completed')
+
+
+class UpdateFollowupStatusPermissionTests(TestCase):
+    """Regression test: update_followup_status previously had no branch on its role
+    check at all for Branch Head/Counselor - either role could silently fall through
+    the telecaller/sales-head-only checks and modify ANY branch's follow-up."""
+
+    def setUp(self):
+        self.client = Client()
+        self.branch_a = Branch.objects.get_or_create(name="UFS Branch A")[0]
+        self.branch_b = Branch.objects.get_or_create(name="UFS Branch B")[0]
+
+        self.branch_head_a = User.objects.create_user(
+            username="ufs_bh_a", password="pwd12345678", role=UserRole.BRANCH_HEAD, branch=self.branch_a
+        )
+        self.counselor_a = User.objects.create_user(
+            username="ufs_counselor_a", password="pwd12345678", role=UserRole.COUNSELOR, branch=self.branch_a
+        )
+
+        lead_b = Lead.objects.create(name="UFS Lead B", phone="9000000201", branch=self.branch_b)
+        self.followup_b = FollowUp.objects.create(
+            lead=lead_b, follow_up_date=timezone.now().date(), status=FollowUpStatus.PENDING
+        )
+
+    def test_branch_head_cannot_update_followup_from_other_branch(self):
+        self.client.login(username="ufs_bh_a", password="pwd12345678")
+        resp = self.client.get(reverse('update_followup_status', args=[self.followup_b.pk, FollowUpStatus.COMPLETED]))
+        self.assertEqual(resp.status_code, 403)
+        self.followup_b.refresh_from_db()
+        self.assertEqual(self.followup_b.status, FollowUpStatus.PENDING)
+
+    def test_counselor_cannot_update_followup_from_other_branch(self):
+        self.client.login(username="ufs_counselor_a", password="pwd12345678")
+        resp = self.client.get(reverse('update_followup_status', args=[self.followup_b.pk, FollowUpStatus.COMPLETED]))
+        self.assertEqual(resp.status_code, 403)
+        self.followup_b.refresh_from_db()
+        self.assertEqual(self.followup_b.status, FollowUpStatus.PENDING)
+
+    def test_branch_head_can_update_followup_in_own_branch(self):
+        lead_a = Lead.objects.create(name="UFS Lead A", phone="9000000202", branch=self.branch_a)
+        followup_a = FollowUp.objects.create(
+            lead=lead_a, follow_up_date=timezone.now().date(), status=FollowUpStatus.PENDING
+        )
+        self.client.login(username="ufs_bh_a", password="pwd12345678")
+        self.client.get(reverse('update_followup_status', args=[followup_a.pk, FollowUpStatus.COMPLETED]))
+        followup_a.refresh_from_db()
+        self.assertEqual(followup_a.status, FollowUpStatus.COMPLETED)

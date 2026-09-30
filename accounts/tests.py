@@ -263,3 +263,45 @@ class LeadPermissionFunctionsTests(TestCase):
         self.assertFalse(can_manage_user(self.branch_head_a, self.telecaller_b))
         self.assertFalse(can_manage_user(self.telecaller_a, self.telecaller_b))
 
+
+class DisabledAccountAccessTests(TestCase):
+    """Spec section 43: disabled accounts must never authenticate, and an account
+    deactivated mid-session must be blocked on its very next request."""
+
+    def setUp(self):
+        self.client = Client()
+        self.branch = Branch.objects.create(name="Disabled Acct Branch")
+        self.telecaller = User.objects.create_user(
+            username="disabled_tc", email="disabled_tc@test.com", password="pwd12345678",
+            role=UserRole.TELECALLER, branch=self.branch, is_active=True,
+        )
+
+    def test_inactive_user_cannot_log_in(self):
+        self.telecaller.is_active = False
+        self.telecaller.save()
+
+        resp = self.client.post(reverse('login'), {
+            'username': 'disabled_tc', 'password': 'pwd12345678',
+        })
+        # Must not be redirected into the app - Django's ModelBackend already refuses
+        # to authenticate an inactive user, so login fails outright.
+        self.assertNotEqual(resp.status_code, 302)
+        dashboard_resp = self.client.get(reverse('telecaller_dashboard'))
+        self.assertNotEqual(dashboard_resp.status_code, 200)
+
+    def test_account_deactivated_mid_session_is_blocked_on_next_request(self):
+        self.client.login(username='disabled_tc', password='pwd12345678')
+        # Confirm the session is genuinely active first.
+        ok_resp = self.client.get(reverse('telecaller_dashboard'))
+        self.assertEqual(ok_resp.status_code, 200)
+
+        self.telecaller.is_active = False
+        self.telecaller.save()
+
+        resp = self.client.get(reverse('telecaller_dashboard'))
+        # Django's auth backend re-validates is_active on every request, so the
+        # session is treated as logged out before our own role_required check even
+        # runs - the redirect carries Django's standard ?next= param.
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith(reverse('login')))
+

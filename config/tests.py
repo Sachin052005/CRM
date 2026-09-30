@@ -122,3 +122,42 @@ class CleanErrorMessageTests(TestCase):
         self.assertIn("Unable to process the file", content)
         self.assertNotIn("BadZipFile", content)
         self.assertNotIn("Traceback", content)
+
+
+class CsrfProtectionSanityTests(TestCase):
+    """Sanity check that CsrfViewMiddleware is actually enforcing protection on a
+    real state-changing endpoint, not merely present in the middleware list."""
+
+    def test_post_without_csrf_token_is_rejected(self):
+        strict_client = Client(enforce_csrf_checks=True)
+        resp = strict_client.post(reverse('login'), {
+            'username': 'nobody', 'password': 'irrelevant',
+        })
+        self.assertEqual(resp.status_code, 403)
+
+
+class RoleEscalationViaMassAssignmentTests(TestCase):
+    """A user-creation form must never let the client set `role` itself - it must
+    always be hardcoded server-side in the form's save(), regardless of what a
+    tampered POST payload includes."""
+
+    def setUp(self):
+        self.client = Client()
+        self.branch = Branch.objects.create(name="Escalation Test Branch")
+        self.branch_head = User.objects.create_user(
+            username="esc_branchhead", password="pwd12345678", role=UserRole.BRANCH_HEAD, branch=self.branch
+        )
+
+    def test_branch_head_cannot_escalate_created_telecaller_to_admin(self):
+        self.client.login(username="esc_branchhead", password="pwd12345678")
+        resp = self.client.post(reverse('branch_head_telecaller_create'), {
+            'first_name': 'Tamper', 'last_name': 'Attempt', 'username': 'tamperedtelecaller',
+            'email': 'tampered@example.com', 'phone': '9990003333', 'is_active': 'on',
+            'password': 'StrongPass123!', 'confirm_password': 'StrongPass123!',
+            'role': 'ADMIN', 'is_staff': 'on', 'is_superuser': 'on',
+        })
+        created = User.objects.filter(username='tamperedtelecaller').first()
+        self.assertIsNotNone(created, "Telecaller creation should still succeed")
+        self.assertEqual(created.role, UserRole.TELECALLER)
+        self.assertFalse(created.is_staff)
+        self.assertFalse(created.is_superuser)

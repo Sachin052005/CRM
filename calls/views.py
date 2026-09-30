@@ -297,6 +297,10 @@ def complete_call_record(request):
         return redirect('telecaller_lead_detail', pk=lead.pk)
     elif caller.is_sales_head_user:
         return redirect('manager_lead_detail', pk=lead.pk)
+    elif caller.is_branch_head_user:
+        return redirect('branch_head_lead_detail', pk=lead.pk)
+    elif caller.is_counselor_user:
+        return redirect('counselor_lead_detail', pk=lead.pk)
     return redirect('admin_lead_detail', pk=lead.pk)
 
 
