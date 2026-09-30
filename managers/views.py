@@ -73,7 +73,7 @@ def admin_manager_create(request):
     if request.method == 'POST':
         form = AdminManagerCreateForm(request.POST)
         if form.is_valid():
-            manager = form.save()
+            manager = form.save(created_by=request.user)
             log_activity(
                 user=request.user,
                 action="Manager Created",
@@ -133,7 +133,7 @@ def admin_manager_edit(request, pk):
     if request.method == 'POST':
         form = AdminManagerEditForm(request.POST, instance=manager)
         if form.is_valid():
-            form.save()
+            form.save(created_by=request.user)
             log_activity(
                 user=request.user,
                 action="Manager Updated",
@@ -146,6 +146,7 @@ def admin_manager_edit(request, pk):
             return redirect('admin_manager_detail', pk=manager.pk)
     else:
         form = AdminManagerEditForm(instance=manager)
+        form.initial['branches'] = list(manager.branch_access.values_list('branch_id', flat=True))
 
     return render(request, 'admin/manager_edit.html', {'form': form, 'manager': manager})
 

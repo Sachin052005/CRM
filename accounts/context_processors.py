@@ -7,6 +7,8 @@ def crm_context(request):
         'APP_NAME': 'TECHPANDA CRM',
         'is_admin': False,
         'is_manager': False,
+        'is_branch_head': False,
+        'is_counselor': False,
         'is_telecaller': False,
         'user_role': '',
         'pending_followups_count': 0,
@@ -16,6 +18,8 @@ def crm_context(request):
     if request.user.is_authenticated:
         context['is_admin'] = request.user.is_admin_user
         context['is_manager'] = request.user.is_sales_head_user
+        context['is_branch_head'] = request.user.is_branch_head_user
+        context['is_counselor'] = request.user.is_counselor_user
         context['is_telecaller'] = request.user.is_telecaller_user
         context['user_role'] = request.user.display_role
 

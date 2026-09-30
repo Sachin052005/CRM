@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}Edit Manager - TECHPANDA CRM{% endblock %}
+{% block title %}Edit Branch Head - TECHPANDA CRM{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div class="page-title-group">
-    <h1>Edit Manager</h1>
-    <p>Update profile details for {{ manager.get_full_name|default:manager.username }}</p>
+    <h1>Edit Branch Head</h1>
+    <p>Update profile details for {{ branch_head.get_full_name|default:branch_head.username }}</p>
   </div>
   <div class="page-actions">
-    <a href="{% url 'admin_manager_detail' manager.pk %}" class="btn btn-secondary">Back to Details</a>
+    <a href="{% url 'sales_head_branch_head_detail' branch_head.pk %}" class="btn btn-secondary">Back to Details</a>
   </div>
 </div>
 
@@ -33,18 +33,16 @@
           {{ form.email }}
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Phone Number</label>
-          {{ form.phone }}
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Assigned Branches</label>
-          <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 14px;">
-            {{ form.branches }}
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            {{ form.phone }}
           </div>
-          <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 4px;">A Sales Head can control multiple branches. Check or uncheck to update access.</div>
-          {% if form.branches.errors %}<div class="form-error">{{ form.branches.errors.0 }}</div>{% endif %}
+          <div class="form-group">
+            <label class="form-label">Branch</label>
+            {{ form.branch }}
+            {% if form.branch.errors %}<div class="form-error">{{ form.branch.errors.0 }}</div>{% endif %}
+          </div>
         </div>
 
         <div class="form-group" style="margin-top: 10px;">
@@ -54,7 +52,7 @@
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-          <a href="{% url 'admin_manager_detail' manager.pk %}" class="btn btn-secondary">Cancel</a>
+          <a href="{% url 'sales_head_branch_head_detail' branch_head.pk %}" class="btn btn-secondary">Cancel</a>
           <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
       </form>

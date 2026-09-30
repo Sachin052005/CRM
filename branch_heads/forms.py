@@ -2,20 +2,16 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
 from accounts.models import User, UserRole
-from branches.models import Branch
 
-class AdminManagerCreateForm(forms.ModelForm):
+
+class BranchHeadCreateForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Set password'}))
     confirm_password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm password'}))
-    branches = forms.ModelMultipleChoiceField(
-        queryset=Branch.objects.filter(status='Active'),
-        required=False,
-        widget=forms.CheckboxSelectMultiple
-    )
+    branch = forms.ModelChoiceField(queryset=User.objects.none(), required=True, widget=forms.Select(attrs={'class': 'form-select'}))
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email', 'phone', 'is_active']
+        fields = ['first_name', 'last_name', 'username', 'email', 'phone', 'branch', 'is_active']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -24,6 +20,11 @@ class AdminManagerCreateForm(forms.ModelForm):
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    def __init__(self, *args, allowed_branches=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from branches.models import Branch
+        self.fields['branch'].queryset = allowed_branches if allowed_branches is not None else Branch.objects.none()
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
@@ -57,29 +58,21 @@ class AdminManagerCreateForm(forms.ModelForm):
                     self.add_error('password', e)
         return cleaned_data
 
-    def save(self, commit=True, created_by=None):
+    def save(self, commit=True):
         user = super().save(commit=False)
-        user.role = UserRole.SALES_HEAD
+        user.role = UserRole.BRANCH_HEAD
         user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
-            from branches.models import SalesHeadBranchAccess
-            for branch in self.cleaned_data.get('branches', []):
-                SalesHeadBranchAccess.objects.get_or_create(
-                    sales_head=user, branch=branch, defaults={'created_by': created_by}
-                )
         return user
 
-class AdminManagerEditForm(forms.ModelForm):
-    branches = forms.ModelMultipleChoiceField(
-        queryset=Branch.objects.filter(status='Active'),
-        required=False,
-        widget=forms.CheckboxSelectMultiple
-    )
+
+class BranchHeadEditForm(forms.ModelForm):
+    branch = forms.ModelChoiceField(queryset=User.objects.none(), required=True, widget=forms.Select(attrs={'class': 'form-select'}))
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'phone', 'is_active']
+        fields = ['first_name', 'last_name', 'email', 'phone', 'branch', 'is_active']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -88,17 +81,12 @@ class AdminManagerEditForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
-    def save(self, commit=True, created_by=None):
-        user = super().save(commit=commit)
-        if commit:
-            from branches.models import SalesHeadBranchAccess
-            selected_ids = set(b.pk for b in self.cleaned_data.get('branches', []))
-            current_ids = set(user.branch_access.values_list('branch_id', flat=True))
-            for branch_id in selected_ids - current_ids:
-                SalesHeadBranchAccess.objects.get_or_create(
-                    sales_head=user, branch_id=branch_id, defaults={'created_by': created_by}
-                )
-            SalesHeadBranchAccess.objects.filter(
-                sales_head=user, branch_id__in=(current_ids - selected_ids)
-            ).delete()
-        return user
+    def __init__(self, *args, allowed_branches=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from branches.models import Branch
+        queryset = allowed_branches if allowed_branches is not None else Branch.objects.none()
+        # Always allow the branch head's current branch to remain a valid choice,
+        # even if it later fell outside the acting user's accessible set.
+        if self.instance and self.instance.branch_id:
+            queryset = queryset | Branch.objects.filter(pk=self.instance.branch_id)
+        self.fields['branch'].queryset = queryset.distinct()

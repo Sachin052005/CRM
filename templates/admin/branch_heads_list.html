@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}Managers - TECHPANDA CRM{% endblock %}
+{% block title %}Branch Heads - TECHPANDA CRM{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div class="page-title-group">
-    <h1>Managers & Counsellors</h1>
-    <p>Manage team leads, counselors, and supervisor accounts</p>
+    <h1>Branch Heads</h1>
+    <p>Manage branch administrators across all branches</p>
   </div>
   <div class="page-actions">
-    <a href="{% url 'admin_manager_create' %}" class="btn btn-primary">
+    <a href="{% url 'admin_branch_head_create' %}" class="btn btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      Add Manager
+      Add Branch Head
     </a>
   </div>
 </div>
@@ -40,7 +40,7 @@
     </div>
     <div style="display: flex; gap: 8px;">
       <button type="submit" class="btn btn-primary">Apply</button>
-      <a href="{% url 'admin_managers_list' %}" class="btn btn-secondary">Reset</a>
+      <a href="{% url 'admin_branch_heads_list' %}" class="btn btn-secondary">Reset</a>
     </div>
   </form>
 </div>
@@ -50,51 +50,43 @@
     <table class="crm-table">
       <thead>
         <tr>
-          <th>Manager</th>
+          <th>Branch Head</th>
           <th>Email</th>
           <th>Phone</th>
-          <th>Branches</th>
+          <th>Branch</th>
+          <th>Counselors</th>
           <th>Telecallers</th>
-          <th>Leads</th>
           <th>Status</th>
           <th>Created Date</th>
           <th style="text-align: right;">Actions</th>
         </tr>
       </thead>
       <tbody>
-        {% for m in page_obj %}
+        {% for bh in page_obj %}
         <tr>
           <td>
-            <strong><a href="{% url 'admin_manager_detail' m.pk %}">{{ m.get_full_name|default:m.username }}</a></strong>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ m.username }}</div>
+            <strong><a href="{% url 'admin_branch_head_detail' bh.pk %}">{{ bh.get_full_name|default:bh.username }}</a></strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ bh.username }}</div>
           </td>
-          <td>{{ m.email }}</td>
-          <td>{{ m.phone|default:"-" }}</td>
+          <td>{{ bh.email }}</td>
+          <td>{{ bh.phone|default:"-" }}</td>
+          <td>{{ bh.branch.name|default:"-" }}</td>
+          <td><span class="badge badge-manager">{{ bh.counselor_count }}</span></td>
+          <td><span class="badge badge-telecaller">{{ bh.telecaller_count }}</span></td>
           <td>
-            {% with access_branches=m.branch_access.all %}
-            {% if access_branches %}
-            <span title="{% for a in access_branches %}{{ a.branch.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">{{ access_branches|length }} branch{{ access_branches|length|pluralize }}</span>
-            {% else %}
-            <span style="color: var(--text-muted);">No branches</span>
-            {% endif %}
-            {% endwith %}
-          </td>
-          <td><span class="badge badge-manager">{{ m.telecaller_count }}</span></td>
-          <td><span class="badge badge-telecaller">{{ m.lead_count }}</span></td>
-          <td>
-            {% if m.is_active %}
+            {% if bh.is_active %}
             <span class="badge badge-active">Active</span>
             {% else %}
             <span class="badge badge-inactive">Inactive</span>
             {% endif %}
           </td>
-          <td>{{ m.date_joined|date:"M d, Y" }}</td>
+          <td>{{ bh.date_joined|date:"M d, Y" }}</td>
           <td style="text-align: right;">
             <div style="display: inline-flex; gap: 6px;">
-              <a href="{% url 'admin_manager_detail' m.pk %}" class="btn btn-secondary btn-sm">View</a>
-              <a href="{% url 'admin_manager_edit' m.pk %}" class="btn btn-secondary btn-sm">Edit</a>
-              <a href="{% url 'admin_manager_toggle_status' m.pk %}" class="btn btn-sm {% if m.is_active %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change this manager's account status?">
-                {% if m.is_active %}Deactivate{% else %}Activate{% endif %}
+              <a href="{% url 'admin_branch_head_detail' bh.pk %}" class="btn btn-secondary btn-sm">View</a>
+              <a href="{% url 'admin_branch_head_edit' bh.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'admin_branch_head_toggle_status' bh.pk %}" class="btn btn-sm {% if bh.is_active %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change this branch head's account status?">
+                {% if bh.is_active %}Deactivate{% else %}Activate{% endif %}
               </a>
             </div>
           </td>
@@ -106,8 +98,8 @@
               <div class="empty-state-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
               </div>
-              <h4>No Managers Found</h4>
-              <p>No managers match your query. Click "Add Manager" to onboard a team lead.</p>
+              <h4>No Branch Heads Found</h4>
+              <p>No branch heads match your query. Click "Add Branch Head" to onboard a branch administrator.</p>
             </div>
           </td>
         </tr>

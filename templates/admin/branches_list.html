@@ -30,6 +30,7 @@
         <thead>
           <tr>
             <th>Branch Name</th>
+            <th>Sales Head</th>
             <th>Contact Phone</th>
             <th>Lead Count</th>
             <th>Status</th>
@@ -44,6 +45,15 @@
               {% if br.address %}
               <div style="font-size: 0.75rem; color: var(--text-muted);">{{ br.address|truncatechars:50 }}</div>
               {% endif %}
+            </td>
+            <td>
+              {% with heads=br.sales_head_access.all %}
+              {% if heads %}
+              {% for a in heads %}{{ a.sales_head.get_full_name|default:a.sales_head.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
+              {% else %}
+              <span style="color: var(--text-muted);">Unassigned</span>
+              {% endif %}
+              {% endwith %}
             </td>
             <td>{{ br.phone|default:"-" }}</td>
             <td><span class="badge badge-manager">{{ br.lead_count }} leads</span></td>
@@ -63,7 +73,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="5">
+            <td colspan="6">
               <div class="empty-state">
                 <div class="empty-state-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>

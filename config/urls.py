@@ -15,6 +15,7 @@ urlpatterns = [
     path('', include('accounts.urls')),
     path('', include('reports.urls')),
     path('', include('managers.urls')),
+    path('', include('branch_heads.urls')),
     path('', include('telecallers.urls')),
     path('', include('leads.urls')),
     path('', include('channels.urls')),

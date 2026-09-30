@@ -24,6 +24,8 @@ class EndToEndIntegrationTests(TestCase):
             'admin_dashboard',
             'admin_managers_list',
             'admin_manager_create',
+            'admin_branch_heads_list',
+            'admin_branch_head_create',
             'admin_telecallers_list',
             'admin_telecaller_create',
             'admin_leads_list',
@@ -46,6 +48,7 @@ class EndToEndIntegrationTests(TestCase):
         urls = [
             'manager_dashboard',
             'manager_telecallers_list',
+            'sales_head_branch_heads_list',
             'manager_leads_list',
             'manager_followups_list',
             'manager_calls_list',
