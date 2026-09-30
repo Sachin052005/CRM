@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from accounts.models import User, UserRole
-from branches.models import Branch
+from branches.models import Branch, SalesHeadBranchAccess
 from channels.models import Channel
 from products.models import Product
 from leads.models import Lead, LeadStatus
@@ -21,13 +21,15 @@ class AdminFollowUpsModuleTests(TestCase):
 
 
         self.manager_a = User.objects.create_user(
-            username="mgr_a", password="pwd", role=UserRole.MANAGER, branch=self.branch1
+            username="mgr_a", password="pwd", role=UserRole.SALES_HEAD, branch=self.branch1
         )
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager_a, branch=self.branch1)
         self.manager_b = User.objects.create_user(
-            username="mgr_b", password="pwd", role=UserRole.MANAGER, branch=self.branch2
+            username="mgr_b", password="pwd", role=UserRole.SALES_HEAD, branch=self.branch2
         )
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager_b, branch=self.branch2)
         self.telecaller_a = User.objects.create_user(
-            username="tc_a", password="pwd", role=UserRole.TELECALLER, manager=self.manager_a, branch=self.branch1
+            username="tc_a", password="pwd", role=UserRole.TELECALLER, branch=self.branch1
         )
         self.channel = Channel.objects.create(name="Google Ads")
         self.product = Product.objects.create(name="Data Science", price=45000)

@@ -55,10 +55,13 @@ class AdminManagerCreateForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.role = UserRole.MANAGER
+        user.role = UserRole.SALES_HEAD
         user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
+            if user.branch_id:
+                from branches.models import SalesHeadBranchAccess
+                SalesHeadBranchAccess.objects.get_or_create(sales_head=user, branch_id=user.branch_id)
         return user
 
 class AdminManagerEditForm(forms.ModelForm):

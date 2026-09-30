@@ -4,7 +4,9 @@ from django.core.exceptions import ValidationError
 
 class UserRole(models.TextChoices):
     ADMIN = 'ADMIN', 'Admin'
-    MANAGER = 'MANAGER', 'Manager / Counsellor'
+    SALES_HEAD = 'SALES_HEAD', 'Sales Head'
+    BRANCH_HEAD = 'BRANCH_HEAD', 'Branch Head'
+    COUNSELOR = 'COUNSELOR', 'Counselor'
     TELECALLER = 'TELECALLER', 'Telecaller'
 
 class User(AbstractUser):
@@ -22,13 +24,13 @@ class User(AbstractUser):
         blank=True,
         related_name='users'
     )
-    manager = models.ForeignKey(
+    counselor = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='assigned_telecallers',
-        limit_choices_to={'role': UserRole.MANAGER}
+        limit_choices_to={'role': UserRole.COUNSELOR}
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -45,8 +47,16 @@ class User(AbstractUser):
         return self.role == UserRole.ADMIN or self.is_superuser
 
     @property
-    def is_manager_user(self):
-        return self.role == UserRole.MANAGER
+    def is_sales_head_user(self):
+        return self.role == UserRole.SALES_HEAD
+
+    @property
+    def is_branch_head_user(self):
+        return self.role == UserRole.BRANCH_HEAD
+
+    @property
+    def is_counselor_user(self):
+        return self.role == UserRole.COUNSELOR
 
     @property
     def is_telecaller_user(self):
@@ -58,10 +68,12 @@ class User(AbstractUser):
 
     def clean(self):
         super().clean()
-        if self.manager:
-            if self.manager == self:
-                raise ValidationError({'manager': "A user cannot be their own manager."})
-            if self.manager.role != UserRole.MANAGER:
-                raise ValidationError({'manager': "Assigned manager must have the MANAGER role."})
+        if self.counselor_id:
             if self.role != UserRole.TELECALLER:
-                raise ValidationError({'manager': "Only Telecallers can have an assigned manager."})
+                raise ValidationError({'counselor': "Only Telecallers can have an assigned counselor."})
+            if self.counselor_id == self.id:
+                raise ValidationError({'counselor': "A user cannot be their own counselor."})
+            if self.counselor.role != UserRole.COUNSELOR:
+                raise ValidationError({'counselor': "Assigned counselor must have the COUNSELOR role."})
+            if self.branch_id and self.counselor.branch_id and self.branch_id != self.counselor.branch_id:
+                raise ValidationError({'counselor': "Assigned counselor must belong to the same branch as the telecaller."})

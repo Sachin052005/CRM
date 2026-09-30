@@ -27,7 +27,7 @@ def admin_telecallers_list(request):
     manager_filter = request.GET.get('manager', '').strip()
     branch_filter = request.GET.get('branch', '').strip()
 
-    telecallers_qs = User.objects.filter(role=UserRole.TELECALLER).select_related('manager', 'branch')
+    telecallers_qs = User.objects.filter(role=UserRole.TELECALLER).select_related('counselor', 'branch')
 
     if search_query:
         telecallers_qs = telecallers_qs.filter(
@@ -43,7 +43,7 @@ def admin_telecallers_list(request):
         telecallers_qs = telecallers_qs.filter(is_active=False)
 
     if manager_filter:
-        telecallers_qs = telecallers_qs.filter(manager_id=manager_filter)
+        telecallers_qs = telecallers_qs.filter(counselor_id=manager_filter)
     
     selected_branch = get_admin_selected_branch(request)
     if selected_branch:
@@ -60,7 +60,7 @@ def admin_telecallers_list(request):
     paginator = Paginator(telecallers_qs, 15)
     page_obj = paginator.get_page(request.GET.get('page'))
 
-    managers = User.objects.filter(role=UserRole.MANAGER, is_active=True)
+    managers = User.objects.filter(role=UserRole.COUNSELOR, is_active=True)
     branches = Branch.objects.filter(status='Active')
 
     return render(request, 'admin/telecallers_list.html', {
@@ -86,7 +86,7 @@ def admin_telecaller_create(request):
                     branch=telecaller.branch,
                     defaults={'assignment_percentage': 0, 'lead_count': 0, 'is_active': False}
                 )
-            mgr_str = f" under Manager '{telecaller.manager.username}'" if telecaller.manager else " (unassigned manager)"
+            mgr_str = f" under Counselor '{telecaller.counselor.username}'" if telecaller.counselor else " (unassigned counselor)"
             log_activity(
                 user=request.user,
                 action="Telecaller Created",
@@ -104,7 +104,7 @@ def admin_telecaller_create(request):
 
 @admin_required
 def admin_telecaller_detail(request, pk):
-    telecaller = get_object_or_404(User.objects.select_related('manager', 'branch'), pk=pk, role=UserRole.TELECALLER)
+    telecaller = get_object_or_404(User.objects.select_related('counselor', 'branch'), pk=pk, role=UserRole.TELECALLER)
 
     leads = Lead.objects.filter(assigned_telecaller=telecaller).select_related('channel', 'product')[:10]
     calls = CallHistory.objects.filter(caller=telecaller).select_related('lead')[:10]
@@ -152,14 +152,14 @@ def admin_telecaller_edit(request, pk):
 
 @admin_required
 def admin_telecaller_assign(request, pk):
-    telecaller = get_object_or_404(User.objects.select_related('manager'), pk=pk, role=UserRole.TELECALLER)
-    old_manager = telecaller.manager
+    telecaller = get_object_or_404(User.objects.select_related('counselor'), pk=pk, role=UserRole.TELECALLER)
+    old_manager = telecaller.counselor
 
     if request.method == 'POST':
         form = TelecallerAssignForm(request.POST)
         if form.is_valid():
-            new_manager = form.cleaned_data['manager']
-            telecaller.manager = new_manager
+            new_manager = form.cleaned_data['counselor']
+            telecaller.counselor = new_manager
             telecaller.save()
 
             old_name = old_manager.get_full_name() or old_manager.username if old_manager else "None"
@@ -168,15 +168,15 @@ def admin_telecaller_assign(request, pk):
             log_activity(
                 user=request.user,
                 action="Telecaller Reassigned",
-                description=f"Admin reassigned Telecaller '{telecaller.username}' from Manager '{old_name}' to Manager '{new_name}'.",
+                description=f"Admin reassigned Telecaller '{telecaller.username}' from Counselor '{old_name}' to Counselor '{new_name}'.",
                 object_type="User",
                 object_id=telecaller.pk,
                 request=request
             )
-            messages.success(request, f"Telecaller '{telecaller.username}' successfully assigned to Manager '{new_name}'.")
+            messages.success(request, f"Telecaller '{telecaller.username}' successfully assigned to Counselor '{new_name}'.")
             return redirect('admin_telecallers_list')
     else:
-        initial_data = {'manager': old_manager.pk if old_manager else None}
+        initial_data = {'counselor': old_manager.pk if old_manager else None}
         form = TelecallerAssignForm(initial=initial_data)
 
     return render(request, 'admin/telecaller_assign.html', {

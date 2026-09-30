@@ -4,7 +4,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 from accounts.models import User, UserRole
-from branches.models import Branch
+from branches.models import Branch, SalesHeadBranchAccess
 from leads.models import Lead, LeadStatus
 from drive.models import DriveConnection, CallRecording
 from drive.services import (
@@ -25,6 +25,7 @@ class DriveModuleIntegrationTests(TestCase):
 
         # Branch
         self.branch = Branch.objects.create(name='Chennai Central', status='Active')
+        self.branch_b = Branch.objects.create(name='Chennai North', status='Active')
 
         # Admin user
         self.admin = User.objects.create_user(
@@ -35,29 +36,29 @@ class DriveModuleIntegrationTests(TestCase):
             is_superuser=True
         )
 
-        # Manager user
+        # Manager user (Sales Head, has access only to self.branch)
         self.manager = User.objects.create_user(
             username='manager_drive_user',
             password='Password@123',
-            role=UserRole.MANAGER,
+            role=UserRole.SALES_HEAD,
             branch=self.branch
         )
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager, branch=self.branch)
 
-        # Telecaller 1 (reports to manager)
+        # Telecaller 1 (in manager's branch)
         self.telecaller1 = User.objects.create_user(
             username='telecaller1_drive_user',
             password='Password@123',
             role=UserRole.TELECALLER,
-            manager=self.manager,
             branch=self.branch
         )
 
-        # Telecaller 2 (reports to different/no manager)
+        # Telecaller 2 (different branch, not under this manager)
         self.telecaller2 = User.objects.create_user(
             username='telecaller2_drive_user',
             password='Password@123',
             role=UserRole.TELECALLER,
-            branch=self.branch
+            branch=self.branch_b
         )
 
         # Leads
@@ -79,7 +80,7 @@ class DriveModuleIntegrationTests(TestCase):
             email='priya@gmail.com',
             status=LeadStatus.NEW,
             assigned_telecaller=self.telecaller2,
-            branch=self.branch
+            branch=self.branch_b
         )
 
         # Clean Drive storage

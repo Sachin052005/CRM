@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 class Branch(models.Model):
@@ -18,3 +19,32 @@ class Branch(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SalesHeadBranchAccess(models.Model):
+    sales_head = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='branch_access',
+        limit_choices_to={'role': 'SALES_HEAD'}
+    )
+    branch = models.ForeignKey(
+        'branches.Branch',
+        on_delete=models.CASCADE,
+        related_name='sales_head_access'
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('sales_head', 'branch')
+        verbose_name_plural = 'Sales head branch access'
+
+    def __str__(self):
+        return f"{self.sales_head} -> {self.branch}"

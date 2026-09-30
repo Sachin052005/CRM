@@ -7,8 +7,8 @@ from branches.models import Branch
 class AdminTelecallerCreateForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Set password'}))
     confirm_password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm password'}))
-    manager = forms.ModelChoiceField(
-        queryset=User.objects.filter(role=UserRole.MANAGER, is_active=True),
+    counselor = forms.ModelChoiceField(
+        queryset=User.objects.filter(role=UserRole.COUNSELOR, is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -20,7 +20,7 @@ class AdminTelecallerCreateForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email', 'phone', 'manager', 'branch', 'is_active']
+        fields = ['first_name', 'last_name', 'username', 'email', 'phone', 'counselor', 'branch', 'is_active']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -71,8 +71,8 @@ class AdminTelecallerCreateForm(forms.ModelForm):
         return user
 
 class AdminTelecallerEditForm(forms.ModelForm):
-    manager = forms.ModelChoiceField(
-        queryset=User.objects.filter(role=UserRole.MANAGER),
+    counselor = forms.ModelChoiceField(
+        queryset=User.objects.filter(role=UserRole.COUNSELOR),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -84,7 +84,7 @@ class AdminTelecallerEditForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'phone', 'manager', 'branch', 'is_active']
+        fields = ['first_name', 'last_name', 'email', 'phone', 'counselor', 'branch', 'is_active']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -94,9 +94,9 @@ class AdminTelecallerEditForm(forms.ModelForm):
         }
 
 class TelecallerAssignForm(forms.Form):
-    manager = forms.ModelChoiceField(
-        queryset=User.objects.filter(role=UserRole.MANAGER, is_active=True),
+    counselor = forms.ModelChoiceField(
+        queryset=User.objects.filter(role=UserRole.COUNSELOR, is_active=True),
         required=True,
-        empty_label="-- Select Manager --",
+        empty_label="-- Select Counselor --",
         widget=forms.Select(attrs={'class': 'form-select'})
     )

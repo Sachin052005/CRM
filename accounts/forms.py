@@ -74,7 +74,7 @@ class BaseRegistrationForm(forms.ModelForm):
 class ManagerRegistrationForm(BaseRegistrationForm):
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.role = UserRole.MANAGER
+        user.role = UserRole.SALES_HEAD
         user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()

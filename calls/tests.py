@@ -1,6 +1,7 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from accounts.models import User, UserRole
+from branches.models import Branch, SalesHeadBranchAccess
 from leads.models import Lead, LeadStatus
 from calls.models import CallHistory
 from followups.models import FollowUp, FollowUpStatus
@@ -9,9 +10,11 @@ from activities.models import Activity
 class CallExecutionAndPersistenceTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.manager = User.objects.create_user(username="mgr_call", password="pwd", role=UserRole.MANAGER)
+        self.branch = Branch.objects.create(name="Calls Test Branch")
+        self.manager = User.objects.create_user(username="mgr_call", password="pwd", role=UserRole.SALES_HEAD, branch=self.branch)
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager, branch=self.branch)
         self.telecaller = User.objects.create_user(
-            username="tc_call", password="pwd", role=UserRole.TELECALLER, manager=self.manager
+            username="tc_call", password="pwd", role=UserRole.TELECALLER, branch=self.branch
         )
         self.lead = Lead.objects.create(
             name="Vikram Singh",
@@ -126,7 +129,7 @@ class CallExecutionAndPersistenceTests(TestCase):
         self.assertIsNotNone(activity)
 
     def test_admin_call_create_hierarchy_mismatch_rejected(self):
-        other_manager = User.objects.create_user(username="other_mgr", password="pwd", role=UserRole.MANAGER)
+        other_manager = User.objects.create_user(username="other_mgr", password="pwd", role=UserRole.SALES_HEAD)
         admin = User.objects.create_superuser(username="admin_call_check", password="pwd")
         self.client.login(username='admin_call_check', password='pwd')
 

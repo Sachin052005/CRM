@@ -5,7 +5,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.core.management import call_command
 from accounts.models import User, UserRole
-from branches.models import Branch
+from branches.models import Branch, SalesHeadBranchAccess
 from channels.models import Channel
 from products.models import Product
 from leads.models import (
@@ -38,11 +38,12 @@ class GoogleSheetsIntegrationTests(TestCase):
             username="admin_test", password="adminpassword", email="admin@techpanda.com", role=UserRole.ADMIN
         )
         self.manager = User.objects.create_user(
-            username="mgr_sheet", password="pwd", role=UserRole.MANAGER, branch=self.branch
+            username="mgr_sheet", password="pwd", role=UserRole.SALES_HEAD, branch=self.branch
         )
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager, branch=self.branch)
         self.telecaller = User.objects.create_user(
             username="tc_sheet", password="pwd", role=UserRole.TELECALLER,
-            branch=self.branch, manager=self.manager
+            branch=self.branch
         )
 
         self.valid_sheet_url = "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=0"
@@ -135,7 +136,8 @@ class GoogleSheetsIntegrationTests(TestCase):
         assign_lead_to_team(sample_lead, self.branch, method='Automatic')
         self.assertEqual(sample_lead.assigned_manager, self.manager)
         self.assertEqual(sample_lead.assigned_telecaller, self.telecaller)
-        self.assertEqual(sample_lead.assigned_telecaller.manager, sample_lead.assigned_manager)
+        self.assertEqual(sample_lead.assigned_telecaller.branch, self.branch)
+        self.assertIn(self.branch, [a.branch for a in sample_lead.assigned_manager.branch_access.all()])
 
     @patch('leads.google_sheets.fetch_sheet_data')
     def test_sync_google_sheet_insert_and_update(self, mock_fetch):

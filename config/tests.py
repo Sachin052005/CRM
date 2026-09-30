@@ -7,9 +7,9 @@ class EndToEndIntegrationTests(TestCase):
         self.client = Client()
 
         self.admin = User.objects.create_superuser(username="priya_test", password="123", email="edppriya@test.com")
-        self.manager = User.objects.create_user(username="mgr_test", password="123", role=UserRole.MANAGER)
+        self.manager = User.objects.create_user(username="mgr_test", password="123", role=UserRole.SALES_HEAD)
         self.telecaller = User.objects.create_user(
-            username="tc_test", password="123", role=UserRole.TELECALLER, manager=self.manager
+            username="tc_test", password="123", role=UserRole.TELECALLER
         )
 
     def test_public_pages(self):

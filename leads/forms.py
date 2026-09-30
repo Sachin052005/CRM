@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from accounts.models import User, UserRole
+from accounts.permissions import get_accessible_branch_ids
 from branches.models import Branch
 from channels.models import Channel
 from products.models import Product
@@ -34,7 +35,7 @@ def infer_lead_branch(user=None, manager=None, telecaller=None, request=None, cu
 
 class AdminLeadForm(forms.ModelForm):
     assigned_manager = forms.ModelChoiceField(
-        queryset=User.objects.filter(role=UserRole.MANAGER, is_active=True),
+        queryset=User.objects.filter(role=UserRole.SALES_HEAD, is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
@@ -67,9 +68,9 @@ class AdminLeadForm(forms.ModelForm):
         mgr = cleaned_data.get('assigned_manager')
         tc = cleaned_data.get('assigned_telecaller')
         if mgr and tc:
-            if tc.manager and tc.manager != mgr:
+            if tc.branch_id and tc.branch_id not in get_accessible_branch_ids(mgr):
                 raise ValidationError({
-                    'assigned_telecaller': f"Telecaller '{tc.username}' reports to Manager '{tc.manager.username}', not '{mgr.username}'."
+                    'assigned_telecaller': f"Telecaller '{tc.username}' belongs to a branch not managed by '{mgr.username}'."
                 })
         if not cleaned_data.get('branch'):
             current_b = getattr(self.instance, 'branch', None) if self.instance else None
@@ -100,7 +101,7 @@ class ManagerLeadForm(forms.ModelForm):
         if manager:
             self.fields['assigned_telecaller'].queryset = User.objects.filter(
                 role=UserRole.TELECALLER,
-                manager=manager,
+                branch_id__in=get_accessible_branch_ids(manager),
                 is_active=True
             )
 
@@ -166,7 +167,7 @@ class ManagerLeadCreateForm(forms.ModelForm):
         if manager:
             self.fields['assigned_telecaller'].queryset = User.objects.filter(
                 role=UserRole.TELECALLER,
-                manager=manager,
+                branch_id__in=get_accessible_branch_ids(manager),
                 is_active=True
             )
 

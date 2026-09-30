@@ -192,15 +192,14 @@ def compute_mapped_hash(data_dict: dict) -> str:
 def assign_lead_to_team(lead: Lead, branch: Branch = None, method: str = 'Automatic'):
     """
     Applies role-based assignment rules:
-    - Lead -> Branch -> Active Manager -> Active Telecaller reporting to that manager.
-    Strictly enforces the telecaller.manager == manager constraint.
+    - Lead -> Branch -> Active Sales Head (with access to that branch) -> Active Telecaller in that branch.
     """
     if method != 'Automatic':
         return
 
-    managers = User.objects.filter(role=UserRole.MANAGER, is_active=True)
+    managers = User.objects.filter(role=UserRole.SALES_HEAD, is_active=True)
     if branch:
-        branch_managers = managers.filter(branch=branch)
+        branch_managers = managers.filter(branch_access__branch=branch)
         if branch_managers.exists():
             managers = branch_managers
 
@@ -208,10 +207,9 @@ def assign_lead_to_team(lead: Lead, branch: Branch = None, method: str = 'Automa
     if assigned_manager:
         lead.assigned_manager = assigned_manager
 
-        # Find telecallers reporting directly to assigned manager
+        # Find telecallers in this branch
         telecallers = User.objects.filter(
             role=UserRole.TELECALLER,
-            manager=assigned_manager,
             is_active=True
         )
         if branch:

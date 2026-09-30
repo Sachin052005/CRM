@@ -1,4 +1,5 @@
 from followups.models import FollowUp, FollowUpStatus
+from django.db.models import Q
 from django.utils import timezone
 
 def crm_context(request):
@@ -14,10 +15,10 @@ def crm_context(request):
     }
     if request.user.is_authenticated:
         context['is_admin'] = request.user.is_admin_user
-        context['is_manager'] = request.user.is_manager_user
+        context['is_manager'] = request.user.is_sales_head_user
         context['is_telecaller'] = request.user.is_telecaller_user
         context['user_role'] = request.user.display_role
-        
+
         if request.user.is_admin_user:
             from branches.models import Branch
             from branches.utils import get_admin_selected_branch
@@ -29,10 +30,10 @@ def crm_context(request):
         qs = FollowUp.objects.filter(status=FollowUpStatus.PENDING)
         if request.user.is_telecaller_user:
             qs = qs.filter(telecaller=request.user)
-        elif request.user.is_manager_user:
-            from django.db.models import Q
+        elif request.user.is_sales_head_user:
+            from accounts.permissions import get_accessible_branch_ids
             qs = qs.filter(
-                Q(manager=request.user) | Q(telecaller__manager=request.user)
+                Q(manager=request.user) | Q(telecaller__branch_id__in=get_accessible_branch_ids(request.user))
             )
         
         context['pending_followups_count'] = qs.count()

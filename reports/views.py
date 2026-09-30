@@ -3,7 +3,7 @@ from django.db.models import Count, Q, Avg, Sum
 from django.utils import timezone
 from datetime import datetime, time
 from accounts.models import User, UserRole
-from accounts.permissions import admin_required, manager_required
+from accounts.permissions import admin_required, sales_head_required, get_accessible_branch_ids
 from branches.models import Branch
 from channels.models import Channel
 from products.models import Product
@@ -83,18 +83,18 @@ def admin_dashboard(request):
     new_leads = leads_qs.filter(status=LeadStatus.NEW).count()
     active_leads = leads_qs.exclude(status__in=[LeadStatus.LOST, LeadStatus.CONVERTED]).count()
 
-    manager_performance = User.objects.filter(role=UserRole.MANAGER)
-    telecaller_performance = User.objects.filter(role=UserRole.TELECALLER).select_related('manager')
+    manager_performance = User.objects.filter(role=UserRole.SALES_HEAD)
+    telecaller_performance = User.objects.filter(role=UserRole.TELECALLER).select_related('counselor')
     activities_qs = Activity.objects.select_related('user')
 
     if selected_branch:
-        total_managers = User.objects.filter(role=UserRole.MANAGER, branch=selected_branch).count()
+        total_managers = User.objects.filter(role=UserRole.SALES_HEAD, branch_access__branch=selected_branch).count()
         total_telecallers = User.objects.filter(role=UserRole.TELECALLER, branch=selected_branch).count()
-        manager_performance = manager_performance.filter(branch=selected_branch)
+        manager_performance = manager_performance.filter(branch_access__branch=selected_branch).distinct()
         telecaller_performance = telecaller_performance.filter(branch=selected_branch)
         activities_qs = activities_qs.filter(user__branch=selected_branch)
     else:
-        total_managers = User.objects.filter(role=UserRole.MANAGER).count()
+        total_managers = User.objects.filter(role=UserRole.SALES_HEAD).count()
         total_telecallers = User.objects.filter(role=UserRole.TELECALLER).count()
 
     pending_followups = followups_qs.filter(status=FollowUpStatus.PENDING, follow_up_date__gte=today).count()
@@ -130,7 +130,7 @@ def admin_dashboard(request):
     recent_calls = calls_qs.select_related('lead', 'caller', 'manager', 'telecaller').order_by('-call_started_at')[:6]
 
     # Dropdown collections for filter form
-    managers = User.objects.filter(role=UserRole.MANAGER, is_active=True)
+    managers = User.objects.filter(role=UserRole.SALES_HEAD, is_active=True)
     telecallers = User.objects.filter(role=UserRole.TELECALLER, is_active=True)
     branches = Branch.objects.filter(status='Active')
     channels = Channel.objects.filter(status='Active')
@@ -217,13 +217,13 @@ def admin_reports(request):
 
 
 # ==========================================
-# MANAGER REPORTS (Section 41, 52)
+# SALES HEAD REPORTS (Section 41, 52)
 # ==========================================
 
-@manager_required
+@sales_head_required
 def manager_reports(request):
     manager = request.user
-    telecallers = User.objects.filter(manager=manager)
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=get_accessible_branch_ids(manager))
     telecaller_ids = list(telecallers.values_list('id', flat=True))
 
     team_lead_filter = Q(assigned_manager=manager) | Q(assigned_telecaller_id__in=telecaller_ids)

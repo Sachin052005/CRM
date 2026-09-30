@@ -512,7 +512,7 @@ def ensure_sample_leads_for_demo(user=None):
     else:
         branch = Branch.objects.first()
 
-    manager = User.objects.filter(role='MANAGER').first()
+    manager = User.objects.filter(role='SALES_HEAD').first()
     telecaller = User.objects.filter(role='TELECALLER').first()
 
     # Core sample leads
@@ -743,7 +743,7 @@ def get_user_recordings_queryset(user):
     """
     Returns the role-scoped queryset of call recordings based on the user's CRM permissions:
     - ADMIN: all recordings (both matched and unmatched)
-    - MANAGER: recordings belonging to leads assigned to the manager or manager's telecallers
+    - SALES_HEAD: recordings belonging to leads in the sales head's accessible branches
     - TELECALLER: recordings belonging to leads assigned to that telecaller
     """
     if not user.is_authenticated:
@@ -752,10 +752,11 @@ def get_user_recordings_queryset(user):
     if user.is_admin_user:
         return CallRecording.objects.all().select_related('lead', 'drive_connection')
 
-    if user.is_manager_user:
+    if user.is_sales_head_user:
+        from accounts.permissions import get_accessible_branch_ids
         return CallRecording.objects.filter(
             Q(lead__assigned_manager=user) |
-            Q(lead__assigned_telecaller__manager=user)
+            Q(lead__branch_id__in=get_accessible_branch_ids(user))
         ).select_related('lead', 'drive_connection')
 
     if user.is_telecaller_user:

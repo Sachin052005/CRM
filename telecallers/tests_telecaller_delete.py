@@ -54,12 +54,12 @@ class TelecallerDeleteFlowTestCase(TestCase):
             is_superuser=True
         )
 
-        # Manager user
+        # Sales Head user (formerly "Manager")
         self.manager_user = User.objects.create_user(
             username="manager_user",
             email="manager@techpanda.com",
             password="ManagerPassword@2026",
-            role=UserRole.MANAGER,
+            role=UserRole.SALES_HEAD,
             branch=self.branch
         )
 
@@ -72,7 +72,6 @@ class TelecallerDeleteFlowTestCase(TestCase):
             password="Password@123",
             role=UserRole.TELECALLER,
             branch=self.branch,
-            manager=self.manager_user,
             is_active=True
         )
 
@@ -93,7 +92,6 @@ class TelecallerDeleteFlowTestCase(TestCase):
             password="Password@123",
             role=UserRole.TELECALLER,
             branch=self.branch,
-            manager=self.manager_user,
             is_active=True
         )
         self.setup_priya = TelecallerLeadSetup.objects.create(

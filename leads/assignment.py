@@ -57,7 +57,7 @@ def assign_new_lead(lead, branch=None, source="Google Sheet", triggered_by=None)
                 telecaller__is_active=True,
                 telecaller__role=UserRole.TELECALLER
             )
-            .select_related('telecaller', 'telecaller__manager')
+            .select_related('telecaller', 'telecaller__branch')
         )
 
         method = LeadSetupConfig.get_current_method()
@@ -157,16 +157,14 @@ def assign_new_lead(lead, branch=None, source="Google Sheet", triggered_by=None)
                 lead.save()
             return False
 
-        # Identify assigned manager (telecaller's manager or branch manager)
-        selected_manager = getattr(selected_telecaller, 'manager', None)
+        # Identify assigned manager (Sales Head with access to this branch)
+        selected_manager = User.objects.filter(
+            role=UserRole.SALES_HEAD,
+            branch_access__branch=target_branch,
+            is_active=True
+        ).annotate(cnt=Count('manager_leads')).order_by('cnt', 'id').first()
         if not selected_manager:
-            selected_manager = User.objects.filter(
-                role=UserRole.MANAGER,
-                branch=target_branch,
-                is_active=True
-            ).annotate(cnt=Count('manager_leads')).order_by('cnt', 'id').first()
-            if not selected_manager:
-                selected_manager = User.objects.filter(role=UserRole.MANAGER, is_active=True).first()
+            selected_manager = User.objects.filter(role=UserRole.SALES_HEAD, is_active=True).first()
 
         # Update Lead atomically
         lead.branch = target_branch
@@ -286,7 +284,7 @@ def apply_branch_lead_distribution(branch, user=None) -> tuple[int, int, str]:
                 telecaller__is_active=True,
                 telecaller__role=UserRole.TELECALLER
             )
-            .select_related('telecaller', 'telecaller__manager')
+            .select_related('telecaller', 'telecaller__branch')
             .order_by('id')
         )
 
@@ -370,8 +368,8 @@ def apply_branch_lead_distribution(branch, user=None) -> tuple[int, int, str]:
                 -s.id
             ))
             selected_tc = best_setup.telecaller
-            selected_mgr = getattr(selected_tc, 'manager', None) or User.objects.filter(
-                role=UserRole.MANAGER, branch=branch, is_active=True
+            selected_mgr = User.objects.filter(
+                role=UserRole.SALES_HEAD, branch_access__branch=branch, is_active=True
             ).first()
 
             lead.branch = branch

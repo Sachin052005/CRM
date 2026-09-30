@@ -2,7 +2,8 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from accounts.models import User, UserRole
-from branches.models import Branch
+from accounts.permissions import get_accessible_branch_ids
+from branches.models import Branch, SalesHeadBranchAccess
 from channels.models import Channel
 from products.models import Product
 from leads.models import Lead, LeadStatus
@@ -11,17 +12,20 @@ class LeadManagementTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.branch = Branch.objects.create(name="South Campus")
+        self.branch_b = Branch.objects.create(name="North Campus")
         self.channel = Channel.objects.create(name="Website")
         self.product = Product.objects.create(name="Python FullStack", price=25000)
 
-        self.manager_a = User.objects.create_user(username="m_alpha", password="pwd", role=UserRole.MANAGER)
-        self.manager_b = User.objects.create_user(username="m_beta", password="pwd", role=UserRole.MANAGER)
+        self.manager_a = User.objects.create_user(username="m_alpha", password="pwd", role=UserRole.SALES_HEAD, branch=self.branch)
+        self.manager_b = User.objects.create_user(username="m_beta", password="pwd", role=UserRole.SALES_HEAD, branch=self.branch_b)
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager_a, branch=self.branch)
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager_b, branch=self.branch_b)
 
         self.telecaller_a = User.objects.create_user(
-            username="tc_alpha", password="pwd", role=UserRole.TELECALLER, manager=self.manager_a
+            username="tc_alpha", password="pwd", role=UserRole.TELECALLER, branch=self.branch
         )
         self.telecaller_b = User.objects.create_user(
-            username="tc_beta", password="pwd", role=UserRole.TELECALLER, manager=self.manager_b
+            username="tc_beta", password="pwd", role=UserRole.TELECALLER, branch=self.branch_b
         )
 
         self.lead_a = Lead.objects.create(
@@ -42,19 +46,19 @@ class LeadManagementTests(TestCase):
             email="sneha@example.com",
             channel=self.channel,
             product=self.product,
-            branch=self.branch,
+            branch=self.branch_b,
             assigned_manager=self.manager_b,
             assigned_telecaller=self.telecaller_b,
             status=LeadStatus.CONTACTED
         )
 
-    def test_invalid_telecaller_manager_assignment_clean(self):
-        """Telecaller must belong to assigned manager."""
+    def test_invalid_telecaller_branch_assignment_clean(self):
+        """Telecaller must belong to the lead's branch."""
         invalid_lead = Lead(
             name="Invalid Pairing",
             phone="9999900000",
-            assigned_manager=self.manager_a,
-            assigned_telecaller=self.telecaller_b  # telecaller_b reports to manager_b!
+            branch=self.branch,
+            assigned_telecaller=self.telecaller_b  # telecaller_b belongs to a different branch!
         )
         with self.assertRaises(ValidationError):
             invalid_lead.clean()
@@ -142,11 +146,11 @@ class LeadManagementTests(TestCase):
         # Both leads should have valid assigned manager and telecaller
         self.assertIsNotNone(lead1.assigned_manager)
         self.assertIsNotNone(lead1.assigned_telecaller)
-        self.assertEqual(lead1.assigned_telecaller.manager, lead1.assigned_manager)
+        self.assertEqual(lead1.assigned_telecaller.branch, lead1.branch)
 
         self.assertIsNotNone(lead2.assigned_manager)
         self.assertIsNotNone(lead2.assigned_telecaller)
-        self.assertEqual(lead2.assigned_telecaller.manager, lead2.assigned_manager)
+        self.assertEqual(lead2.assigned_telecaller.branch, lead2.branch)
 
     def test_assign_lead_inactive_users_excluded(self):
         from leads.assignment import assign_lead_automatically

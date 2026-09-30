@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.core.paginator import Paginator
 from accounts.models import User, UserRole
-from accounts.permissions import admin_required, manager_required, telecaller_required
+from accounts.permissions import admin_required, sales_head_required, telecaller_required, get_accessible_branch_ids
 from branches.models import Branch
 from branches.utils import get_admin_selected_branch
 from .models import Activity, Notification
@@ -63,13 +63,13 @@ def admin_activities_list(request):
 
 
 # ==========================================
-# MANAGER: ACTIVITIES (Section 42)
+# SALES HEAD: ACTIVITIES (Section 42)
 # ==========================================
 
-@manager_required
+@sales_head_required
 def manager_activities_list(request):
     manager = request.user
-    telecallers = User.objects.filter(manager=manager)
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=get_accessible_branch_ids(manager))
     telecaller_ids = list(telecallers.values_list('id', flat=True))
 
     activities_qs = Activity.objects.filter(

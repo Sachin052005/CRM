@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.utils import timezone
 from accounts.models import User, UserRole
-from accounts.permissions import admin_required, manager_required, telecaller_required
+from accounts.permissions import admin_required, sales_head_required, telecaller_required, get_accessible_branch_ids
 from branches.models import Branch
 from branches.utils import get_admin_selected_branch
 from channels.models import Channel
@@ -25,8 +25,9 @@ def update_followup_status(request, pk, new_status):
     # Security check: telecaller can only update their own follow-ups
     if user.is_telecaller_user and followup.telecaller != user and followup.assigned_user != user:
         raise PermissionDenied("Permission denied: You cannot modify this follow-up.")
-    if user.is_manager_user:
-        if followup.manager != user and followup.assigned_user != user and (followup.telecaller and followup.telecaller.manager != user):
+    if user.is_sales_head_user:
+        branch_ids = get_accessible_branch_ids(user)
+        if followup.manager != user and followup.assigned_user != user and not (followup.telecaller and followup.telecaller.branch_id in branch_ids):
             raise PermissionDenied("Permission denied: You cannot modify this follow-up.")
 
     old_status = followup.status
@@ -49,7 +50,7 @@ def update_followup_status(request, pk, new_status):
     # Redirect appropriately
     if user.is_admin_user:
         return redirect('admin_followups_list')
-    elif user.is_manager_user:
+    elif user.is_sales_head_user:
         return redirect('manager_followups_list')
     elif user.is_telecaller_user:
         return redirect('telecaller_followups_list')
@@ -139,7 +140,7 @@ def admin_followups_list(request):
     query_dict.pop('page', None)
     extra_params = query_dict.urlencode()
 
-    managers = User.objects.filter(role=UserRole.MANAGER, is_active=True)
+    managers = User.objects.filter(role=UserRole.SALES_HEAD, is_active=True)
     telecallers = User.objects.filter(role=UserRole.TELECALLER, is_active=True)
     branches = Branch.objects.filter(status='Active')
     products = Product.objects.all()
@@ -273,14 +274,14 @@ def admin_followup_reschedule(request, pk):
 
 
 # ==========================================
-# MANAGER: FOLLOW-UPS
+# SALES HEAD: FOLLOW-UPS
 # ==========================================
 
-@manager_required
+@sales_head_required
 def manager_followups_list(request):
     manager = request.user
     today = timezone.now().date()
-    telecallers = User.objects.filter(manager=manager)
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=get_accessible_branch_ids(manager))
     telecaller_ids = list(telecallers.values_list('id', flat=True))
 
     scope_filter = Q(manager=manager) | Q(telecaller_id__in=telecaller_ids) | Q(assigned_user=manager)

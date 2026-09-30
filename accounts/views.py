@@ -12,7 +12,7 @@ def login_redirect(request):
         return redirect('login')
     if request.user.is_admin_user:
         return redirect('admin_dashboard')
-    elif request.user.is_manager_user:
+    elif request.user.is_sales_head_user:
         return redirect('manager_dashboard')
     elif request.user.is_telecaller_user:
         return redirect('telecaller_dashboard')
@@ -43,7 +43,7 @@ def _process_login(request, expected_role=None, template_name='registration/logi
                 if expected_role == UserRole.ADMIN and not user.is_admin_user:
                     messages.error(request, f"Access denied. '{username}' is not registered with Admin privileges.")
                     return render(request, template_name, {'form': form, 'portal_title': portal_title, 'portal_role': expected_role})
-                elif expected_role == UserRole.MANAGER and not user.is_manager_user:
+                elif expected_role == UserRole.SALES_HEAD and not user.is_sales_head_user:
                     messages.error(request, f"Access denied. '{username}' is not a Manager/Counsellor.")
                     return render(request, template_name, {'form': form, 'portal_title': portal_title, 'portal_role': expected_role})
                 elif expected_role == UserRole.TELECALLER and not user.is_telecaller_user:
@@ -94,7 +94,7 @@ def admin_login(request):
 def manager_login(request):
     return _process_login(
         request,
-        expected_role=UserRole.MANAGER,
+        expected_role=UserRole.SALES_HEAD,
         template_name='registration/manager_login.html',
         portal_title='Manager / Counsellor Portal'
     )

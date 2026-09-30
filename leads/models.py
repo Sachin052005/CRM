@@ -127,11 +127,10 @@ class Lead(models.Model):
 
     def clean(self):
         super().clean()
-        if self.assigned_telecaller and self.assigned_manager:
-            if self.assigned_telecaller.manager and self.assigned_telecaller.manager != self.assigned_manager:
-                raise ValidationError({
-                    'assigned_telecaller': f"Telecaller '{self.assigned_telecaller.username}' reports to '{self.assigned_telecaller.manager.username}', not '{self.assigned_manager.username}'."
-                })
+        if self.assigned_telecaller and self.branch_id and self.assigned_telecaller.branch_id and self.assigned_telecaller.branch_id != self.branch_id:
+            raise ValidationError({
+                'assigned_telecaller': f"Telecaller '{self.assigned_telecaller.username}' belongs to a different branch."
+            })
 
 class LeadImportHistory(models.Model):
     file_name = models.CharField(max_length=255)

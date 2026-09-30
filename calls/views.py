@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from django.utils import timezone
 from accounts.models import User, UserRole
-from accounts.permissions import admin_required, manager_required, telecaller_required, can_access_lead
+from accounts.permissions import admin_required, sales_head_required, telecaller_required, can_access_lead, get_accessible_branch_ids
 from branches.models import Branch
 from branches.utils import get_admin_selected_branch
 from leads.models import Lead, LeadStatus
@@ -18,6 +18,12 @@ from .models import CallHistory, CallStatus, CallOutcome
 from .forms import AdminCallRecordForm
 
 from django.http import JsonResponse
+
+def _branch_sales_head(branch):
+    if not branch:
+        return None
+    access = branch.sales_head_access.select_related('sales_head').first()
+    return access.sales_head if access else None
 
 @login_required
 @transaction.atomic
@@ -65,7 +71,7 @@ def start_call_record(request):
 
     # No pending lock: create active call record
     now = timezone.now()
-    manager = lead.assigned_manager or (caller.manager if caller.is_telecaller_user else None)
+    manager = lead.assigned_manager or (_branch_sales_head(caller.branch) if caller.is_telecaller_user else None)
     telecaller = caller if caller.is_telecaller_user else lead.assigned_telecaller
 
     new_call = CallHistory.objects.create(
@@ -196,7 +202,7 @@ def complete_call_record(request):
     started_at = now - timezone.timedelta(seconds=duration) if duration > 0 else now
 
     # Determine supervising manager & telecaller references
-    manager = lead.assigned_manager or (caller.manager if caller.is_telecaller_user else None)
+    manager = lead.assigned_manager or (_branch_sales_head(caller.branch) if caller.is_telecaller_user else None)
     telecaller = caller if caller.is_telecaller_user else lead.assigned_telecaller
 
     if call_record:
@@ -288,7 +294,7 @@ def complete_call_record(request):
     # Redirect based on user role
     if caller.is_telecaller_user:
         return redirect('telecaller_lead_detail', pk=lead.pk)
-    elif caller.is_manager_user:
+    elif caller.is_sales_head_user:
         return redirect('manager_lead_detail', pk=lead.pk)
     return redirect('admin_lead_detail', pk=lead.pk)
 
@@ -355,7 +361,7 @@ def admin_calls_list(request):
     query_dict.pop('page', None)
     extra_params = query_dict.urlencode()
 
-    managers = User.objects.filter(role=UserRole.MANAGER, is_active=True)
+    managers = User.objects.filter(role=UserRole.SALES_HEAD, is_active=True)
     telecallers = User.objects.filter(role=UserRole.TELECALLER, is_active=True)
     branches = Branch.objects.filter(status='Active')
 
@@ -418,13 +424,13 @@ def admin_call_detail(request, pk):
 
 
 # ==========================================
-# MANAGER: CALLS VIEWS
+# SALES HEAD: CALLS VIEWS
 # ==========================================
 
-@manager_required
+@sales_head_required
 def manager_calls_list(request):
     manager = request.user
-    telecallers = User.objects.filter(manager=manager)
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=get_accessible_branch_ids(manager))
     telecaller_ids = list(telecallers.values_list('id', flat=True))
 
     calls_qs = CallHistory.objects.filter(

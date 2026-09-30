@@ -9,21 +9,21 @@ class TelecallerAssignmentTests(TestCase):
         self.client = Client()
         self.admin = User.objects.create_superuser(username="admin_assign", password="pwd")
         self.branch = Branch.objects.create(name="North Campus")
-        self.mgr_1 = User.objects.create_user(username="mgr_one", password="pwd", role=UserRole.MANAGER, branch=self.branch)
-        self.mgr_2 = User.objects.create_user(username="mgr_two", password="pwd", role=UserRole.MANAGER, branch=self.branch)
+        self.mgr_1 = User.objects.create_user(username="mgr_one", password="pwd", role=UserRole.COUNSELOR, branch=self.branch)
+        self.mgr_2 = User.objects.create_user(username="mgr_two", password="pwd", role=UserRole.COUNSELOR, branch=self.branch)
         self.telecaller = User.objects.create_user(
-            username="tc_switch", password="pwd", role=UserRole.TELECALLER, manager=self.mgr_1, branch=self.branch
+            username="tc_switch", password="pwd", role=UserRole.TELECALLER, counselor=self.mgr_1, branch=self.branch
         )
 
     def test_admin_reassigns_telecaller(self):
         self.client.login(username='admin_assign', password='pwd')
         response = self.client.post(reverse('admin_telecaller_assign', args=[self.telecaller.pk]), {
-            'manager': self.mgr_2.pk
+            'counselor': self.mgr_2.pk
         })
         self.assertRedirects(response, reverse('admin_telecallers_list'))
 
         self.telecaller.refresh_from_db()
-        self.assertEqual(self.telecaller.manager, self.mgr_2)
+        self.assertEqual(self.telecaller.counselor, self.mgr_2)
 
         # Verify activity was recorded
         act = Activity.objects.filter(action="Telecaller Reassigned").first()

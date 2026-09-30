@@ -1,7 +1,7 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from accounts.models import User, UserRole
-from branches.models import Branch
+from branches.models import Branch, SalesHeadBranchAccess
 
 class AccountsAndAuthTests(TestCase):
     def setUp(self):
@@ -18,14 +18,15 @@ class AccountsAndAuthTests(TestCase):
             is_superuser=True
         )
 
-        # Manager user
+        # Sales Head user (formerly "Manager")
         self.manager = User.objects.create_user(
             username="testmanager",
             email="manager@test.com",
             password="managerpassword123",
-            role=UserRole.MANAGER,
+            role=UserRole.SALES_HEAD,
             branch=self.branch
         )
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager, branch=self.branch)
 
         # Telecaller user
         self.telecaller = User.objects.create_user(
@@ -33,7 +34,6 @@ class AccountsAndAuthTests(TestCase):
             email="telecaller@test.com",
             password="callerpassword123",
             role=UserRole.TELECALLER,
-            manager=self.manager,
             branch=self.branch
         )
 
@@ -57,7 +57,7 @@ class AccountsAndAuthTests(TestCase):
         })
         self.assertRedirects(reg_response, reverse('manager_login'))
         new_mgr = User.objects.get(username='newmanager')
-        self.assertEqual(new_mgr.role, UserRole.MANAGER)
+        self.assertEqual(new_mgr.role, UserRole.SALES_HEAD)
 
         # Login
         login_response = self.client.post(reverse('manager_login'), {
@@ -101,8 +101,9 @@ class AccountsAndAuthTests(TestCase):
         self.assertRedirects(response, reverse('manager_dashboard'))
 
     def test_manager_telecaller_relationship(self):
-        self.assertEqual(self.telecaller.manager, self.manager)
-        self.assertIn(self.telecaller, self.manager.assigned_telecallers.all())
+        from accounts.permissions import get_accessible_branch_ids
+        self.assertIn(self.telecaller.branch_id, get_accessible_branch_ids(self.manager))
+        self.assertIn(self.branch, [access.branch for access in self.manager.branch_access.all()])
 
     def test_login_with_email(self):
         # Admin email login

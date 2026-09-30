@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.http import JsonResponse, HttpResponse
 from django.core.exceptions import PermissionDenied
 from accounts.models import User, UserRole
-from accounts.permissions import admin_required, manager_required, telecaller_required, can_access_lead
+from accounts.permissions import admin_required, sales_head_required, telecaller_required, can_access_lead, get_accessible_branch_ids
 from branches.models import Branch
 from channels.models import Channel
 from products.models import Product
@@ -122,7 +122,7 @@ def admin_leads_list(request):
     paginator = Paginator(leads_qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
 
-    managers = User.objects.filter(role=UserRole.MANAGER, is_active=True)
+    managers = User.objects.filter(role=UserRole.SALES_HEAD, is_active=True)
     telecallers = User.objects.filter(role=UserRole.TELECALLER, is_active=True)
     channels = Channel.objects.filter(status='Active')
     products = Product.objects.filter(status='Active')
@@ -322,13 +322,14 @@ def admin_leads_import(request):
 
 
 # ==========================================
-# MANAGER: LEAD MANAGEMENT
+# SALES HEAD: LEAD MANAGEMENT
 # ==========================================
 
-@manager_required
+@sales_head_required
 def manager_leads_list(request):
     manager = request.user
-    telecallers = User.objects.filter(manager=manager)
+    branch_ids = get_accessible_branch_ids(manager)
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=branch_ids)
     telecaller_ids = list(telecallers.values_list('id', flat=True))
 
     leads_qs = Lead.objects.filter(
@@ -376,7 +377,7 @@ def manager_leads_list(request):
         'product_filter': product_filter,
     })
 
-@manager_required
+@sales_head_required
 def manager_lead_create(request):
     manager = request.user
     if request.method == 'POST':
@@ -429,7 +430,7 @@ def manager_lead_create(request):
 
     return render(request, 'manager/lead_create.html', {'form': form})
 
-@manager_required
+@sales_head_required
 def manager_lead_import(request):
     form = LeadImportForm()
     if request.method == 'POST':
@@ -449,7 +450,7 @@ def manager_lead_import(request):
         'import_history': import_history
     })
 
-@manager_required
+@sales_head_required
 def manager_lead_detail(request, pk):
     lead = get_object_or_404(
         Lead.objects.select_related('channel', 'product', 'branch', 'assigned_manager', 'assigned_telecaller'),
@@ -471,7 +472,7 @@ def manager_lead_detail(request, pk):
         'call_recordings': call_recordings,
     })
 
-@manager_required
+@sales_head_required
 def manager_lead_edit(request, pk):
     lead = get_object_or_404(Lead, pk=pk)
     if not can_access_lead(request.user, lead):
@@ -584,7 +585,7 @@ def telecaller_lead_create(request):
                 handle_incoming_lead_duplicate(
                     existing_lead=existing_lead,
                     incoming_data=form.cleaned_data,
-                    branch=telecaller.branch or (telecaller.manager.branch if telecaller.manager else None),
+                    branch=telecaller.branch,
                     user=telecaller,
                     source_label="Telecaller Entry"
                 )
@@ -594,10 +595,15 @@ def telecaller_lead_create(request):
                 )
                 return redirect('telecaller_lead_detail', pk=existing_lead.pk)
 
+            branch_sales_head = None
+            if telecaller.branch:
+                access = telecaller.branch.sales_head_access.select_related('sales_head').first()
+                branch_sales_head = access.sales_head if access else None
+
             lead = form.save(commit=False)
             lead.assigned_telecaller = telecaller
-            lead.assigned_manager = telecaller.manager
-            lead.branch = telecaller.branch or (telecaller.manager.branch if telecaller.manager else None)
+            lead.assigned_manager = branch_sales_head
+            lead.branch = telecaller.branch
             lead.status = LeadStatus.NEW
             lead.save()
             log_activity(
@@ -1745,7 +1751,7 @@ def render_status_pipeline_view(request, status_target, page_title, page_descrip
     paginator = Paginator(leads_qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
 
-    managers = User.objects.filter(role=UserRole.MANAGER, is_active=True)
+    managers = User.objects.filter(role=UserRole.SALES_HEAD, is_active=True)
     telecallers = User.objects.filter(role=UserRole.TELECALLER, is_active=True)
     products = Product.objects.filter(status='Active')
     branches = Branch.objects.filter(status='Active')
@@ -2074,6 +2080,12 @@ def _fetch_or_seed_google_form_leads(conn, triggered_by=None):
         },
     ]
 
+    def _branch_sales_head(branch):
+        if not branch:
+            return None
+        access = branch.sales_head_access.select_related('sales_head').first()
+        return access.sales_head if access else None
+
     for item in samples:
         b = item.get('branch')
         tc = item.get('telecaller')
@@ -2085,7 +2097,7 @@ def _fetch_or_seed_google_form_leads(conn, triggered_by=None):
                 email=item['email'],
                 branch=b,
                 assigned_telecaller=tc,
-                assigned_manager=tc.manager if (tc and tc.manager) else None,
+                assigned_manager=_branch_sales_head(b),
                 status=item['status'],
                 source='Google Form',
                 is_offline=True,
@@ -2096,8 +2108,9 @@ def _fetch_or_seed_google_form_leads(conn, triggered_by=None):
             lead.email = item['email']
             lead.branch = b
             lead.assigned_telecaller = tc
-            if tc and tc.manager:
-                lead.assigned_manager = tc.manager
+            sales_head = _branch_sales_head(b)
+            if sales_head:
+                lead.assigned_manager = sales_head
             lead.status = item['status']
             lead.is_offline = True
             lead.source = 'Google Form'

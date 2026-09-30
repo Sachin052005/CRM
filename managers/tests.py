@@ -1,7 +1,7 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from accounts.models import User, UserRole
-from branches.models import Branch
+from branches.models import Branch, SalesHeadBranchAccess
 
 class ManagerManagementTests(TestCase):
     def setUp(self):
@@ -19,15 +19,17 @@ class ManagerManagementTests(TestCase):
         self.manager1 = User.objects.create_user(
             username="mgr_tnagar",
             password="oldpassword123",
-            role=UserRole.MANAGER,
+            role=UserRole.SALES_HEAD,
             branch=self.branch1
         )
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager1, branch=self.branch1)
         self.manager2 = User.objects.create_user(
             username="mgr_velachery",
             password="oldpassword123",
-            role=UserRole.MANAGER,
+            role=UserRole.SALES_HEAD,
             branch=self.branch2
         )
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager2, branch=self.branch2)
 
     def test_admin_change_manager_password(self):
         self.client.login(username="testadmin", password="adminpassword123")

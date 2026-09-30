@@ -2,7 +2,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 from accounts.models import User, UserRole
-from branches.models import Branch
+from branches.models import Branch, SalesHeadBranchAccess
 from channels.models import Channel
 from products.models import Product
 from calls.models import CallHistory
@@ -53,12 +53,22 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
             is_superuser=True
         )
 
-        # Create Manager
+        # Create Sales Head (formerly "Manager")
         self.manager_user = User.objects.create_user(
             username="manager_chennai",
             email="manager@techpanda.com",
             password="ManagerPassword@2026",
-            role=UserRole.MANAGER,
+            role=UserRole.SALES_HEAD,
+            branch=self.branch
+        )
+        SalesHeadBranchAccess.objects.create(sales_head=self.manager_user, branch=self.branch)
+
+        # Create Counselor (telecallers report to a Counselor under the new hierarchy)
+        self.counselor_user = User.objects.create_user(
+            username="counselor_chennai",
+            email="counselor@techpanda.com",
+            password="CounselorPassword@2026",
+            role=UserRole.COUNSELOR,
             branch=self.branch
         )
 
@@ -92,7 +102,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
                 'phone': phone,
                 'password': 'Telecaller@2026',
                 'confirm_password': 'Telecaller@2026',
-                'manager': self.manager_user.id,
+                'counselor': self.counselor_user.id,
                 'branch': self.branch.id,
                 'is_active': True,
             }, follow=True)
@@ -102,7 +112,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
             user = User.objects.get(username=username)
             self.assertEqual(user.role, UserRole.TELECALLER)
             self.assertEqual(user.branch, self.branch)
-            self.assertEqual(user.manager, self.manager_user)
+            self.assertEqual(user.counselor, self.counselor_user)
             self.assertTrue(user.is_active)
 
             # Verify TelecallerLeadSetup entry was created for this telecaller
@@ -129,7 +139,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
             password="Telecaller@2026",
             role=UserRole.TELECALLER,
             branch=self.branch,
-            manager=self.manager_user,
+            counselor=self.counselor_user,
             is_active=True
         )
         self.priya = User.objects.create_user(
@@ -140,7 +150,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
             password="Telecaller@2026",
             role=UserRole.TELECALLER,
             branch=self.branch,
-            manager=self.manager_user,
+            counselor=self.counselor_user,
             is_active=True
         )
         self.karthik = User.objects.create_user(
@@ -151,7 +161,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
             password="Telecaller@2026",
             role=UserRole.TELECALLER,
             branch=self.branch,
-            manager=self.manager_user,
+            counselor=self.counselor_user,
             is_active=True
         )
 

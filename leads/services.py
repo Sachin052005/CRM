@@ -52,9 +52,11 @@ def import_leads_file(uploaded_file, user):
 
     if user.is_telecaller_user:
         assigned_telecaller = user
-        assigned_manager = user.manager
-        default_branch = user.branch or (user.manager.branch if user.manager else None)
-    elif user.is_manager_user:
+        default_branch = user.branch
+        if default_branch:
+            access = default_branch.sales_head_access.select_related('sales_head').first()
+            assigned_manager = access.sales_head if access else None
+    elif user.is_sales_head_user:
         assigned_manager = user
         default_branch = user.branch
 
@@ -123,10 +125,11 @@ def import_leads_file(uploaded_file, user):
                 new_lead.assigned_telecaller = assigned_telecaller
                 new_lead.assigned_manager = assigned_manager
                 new_lead.branch = branch_obj or default_branch
-            elif user.is_manager_user:
+            elif user.is_sales_head_user:
                 new_lead.assigned_manager = assigned_manager
-                # Auto-assign an active telecaller under this manager
-                tc_qs = User.objects.filter(role=UserRole.TELECALLER, manager=assigned_manager, is_active=True)
+                # Auto-assign an active telecaller within this sales head's accessible branches
+                from accounts.permissions import get_accessible_branch_ids
+                tc_qs = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=get_accessible_branch_ids(user), is_active=True)
                 if branch_obj:
                     branch_tcs = tc_qs.filter(branch=branch_obj)
                     if branch_tcs.exists():

@@ -16,7 +16,7 @@ class AdminCallRecordForm(forms.ModelForm):
         help_text="User who initiated/conducted the call"
     )
     manager = forms.ModelChoiceField(
-        queryset=User.objects.filter(role=UserRole.MANAGER, is_active=True).order_by('username'),
+        queryset=User.objects.filter(role=UserRole.SALES_HEAD, is_active=True).order_by('username'),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
         help_text="Supervising manager"
@@ -85,9 +85,10 @@ class AdminCallRecordForm(forms.ModelForm):
         duration = cleaned_data.get('duration') or 0
 
         if telecaller and manager:
-            if telecaller.manager and telecaller.manager != manager:
+            from accounts.permissions import get_accessible_branch_ids
+            if telecaller.branch_id and telecaller.branch_id not in get_accessible_branch_ids(manager):
                 raise forms.ValidationError(
-                    f"Invalid assignment: Telecaller '{telecaller.username}' reports to '{telecaller.manager.username}', not '{manager.username}'."
+                    f"Invalid assignment: Telecaller '{telecaller.username}' belongs to a branch not managed by '{manager.username}'."
                 )
 
         if started_at and ended_at and ended_at < started_at:

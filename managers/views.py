@@ -4,7 +4,7 @@ from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.utils import timezone
 from accounts.models import User, UserRole
-from accounts.permissions import admin_required, manager_required
+from accounts.permissions import admin_required, sales_head_required, get_accessible_branch_ids
 from branches.models import Branch
 from leads.models import Lead, LeadStatus
 from calls.models import CallHistory
@@ -16,7 +16,7 @@ from django.contrib.auth.forms import SetPasswordForm
 from .forms import AdminManagerCreateForm, AdminManagerEditForm
 
 # ==========================================
-# ADMIN: MANAGER MANAGEMENT
+# ADMIN: MANAGER (SALES HEAD) MANAGEMENT
 # ==========================================
 
 @admin_required
@@ -25,7 +25,7 @@ def admin_managers_list(request):
     status_filter = request.GET.get('status', '').strip()
     branch_filter = request.GET.get('branch', '').strip()
 
-    managers_qs = User.objects.filter(role=UserRole.MANAGER).select_related('branch')
+    managers_qs = User.objects.filter(role=UserRole.SALES_HEAD).select_related('branch')
 
     if search_query:
         managers_qs = managers_qs.filter(
@@ -42,14 +42,18 @@ def admin_managers_list(request):
 
     selected_branch = get_admin_selected_branch(request)
     if selected_branch:
-        managers_qs = managers_qs.filter(branch=selected_branch)
+        managers_qs = managers_qs.filter(branch_access__branch=selected_branch)
     elif branch_filter:
-        managers_qs = managers_qs.filter(branch_id=branch_filter)
+        managers_qs = managers_qs.filter(branch_access__branch_id=branch_filter)
 
     managers_qs = managers_qs.annotate(
-        telecaller_count=Count('assigned_telecallers', distinct=True),
+        telecaller_count=Count(
+            'branch_access__branch__users',
+            filter=Q(branch_access__branch__users__role=UserRole.TELECALLER),
+            distinct=True
+        ),
         lead_count=Count('manager_leads', distinct=True)
-    ).order_by('-date_joined')
+    ).order_by('-date_joined').distinct()
 
     paginator = Paginator(managers_qs, 12)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -87,28 +91,29 @@ def admin_manager_create(request):
 
 @admin_required
 def admin_manager_detail(request, pk):
-    manager = get_object_or_404(User.objects.select_related('branch'), pk=pk, role=UserRole.MANAGER)
+    manager = get_object_or_404(User.objects.select_related('branch'), pk=pk, role=UserRole.SALES_HEAD)
+    branch_ids = get_accessible_branch_ids(manager)
 
-    telecallers = User.objects.filter(manager=manager).annotate(
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=branch_ids).annotate(
         lead_count=Count('telecaller_leads', distinct=True),
         call_count=Count('telecaller_calls', distinct=True),
         followup_count=Count('telecaller_followups', distinct=True)
     )
 
-    total_leads = Lead.objects.filter(Q(assigned_manager=manager) | Q(assigned_telecaller__manager=manager)).count()
-    total_calls = CallHistory.objects.filter(Q(manager=manager) | Q(telecaller__manager=manager)).count()
+    total_leads = Lead.objects.filter(Q(assigned_manager=manager) | Q(assigned_telecaller__branch_id__in=branch_ids)).count()
+    total_calls = CallHistory.objects.filter(Q(manager=manager) | Q(telecaller__branch_id__in=branch_ids)).count()
     pending_followups = FollowUp.objects.filter(
-        Q(manager=manager) | Q(telecaller__manager=manager),
+        Q(manager=manager) | Q(telecaller__branch_id__in=branch_ids),
         status=FollowUpStatus.PENDING
     ).count()
     completed_followups = FollowUp.objects.filter(
-        Q(manager=manager) | Q(telecaller__manager=manager),
+        Q(manager=manager) | Q(telecaller__branch_id__in=branch_ids),
         status=FollowUpStatus.COMPLETED
     ).count()
 
     recent_activities = Activity.objects.filter(user=manager)[:10]
     recent_calls = CallHistory.objects.filter(
-        Q(manager=manager) | Q(telecaller__manager=manager)
+        Q(manager=manager) | Q(telecaller__branch_id__in=branch_ids)
     ).select_related('lead', 'caller')[:10]
 
     return render(request, 'admin/manager_detail.html', {
@@ -124,7 +129,7 @@ def admin_manager_detail(request, pk):
 
 @admin_required
 def admin_manager_edit(request, pk):
-    manager = get_object_or_404(User, pk=pk, role=UserRole.MANAGER)
+    manager = get_object_or_404(User, pk=pk, role=UserRole.SALES_HEAD)
     if request.method == 'POST':
         form = AdminManagerEditForm(request.POST, instance=manager)
         if form.is_valid():
@@ -146,7 +151,7 @@ def admin_manager_edit(request, pk):
 
 @admin_required
 def admin_manager_toggle_status(request, pk):
-    manager = get_object_or_404(User, pk=pk, role=UserRole.MANAGER)
+    manager = get_object_or_404(User, pk=pk, role=UserRole.SALES_HEAD)
     old_status = manager.is_active
     manager.is_active = not old_status
     manager.save()
@@ -165,7 +170,7 @@ def admin_manager_toggle_status(request, pk):
 
 @admin_required
 def admin_manager_change_password(request, pk):
-    manager = get_object_or_404(User, pk=pk, role=UserRole.MANAGER)
+    manager = get_object_or_404(User, pk=pk, role=UserRole.SALES_HEAD)
     if request.method == 'POST':
         form = SetPasswordForm(manager, request.POST)
         if form.is_valid():
@@ -197,29 +202,30 @@ def admin_manager_change_password(request, pk):
 
 
 # ==========================================
-# MANAGER PORTAL (SCOPED TO LOGGED-IN MANAGER)
+# MANAGER (SALES HEAD) PORTAL (SCOPED TO LOGGED-IN SALES HEAD)
 # ==========================================
 
-@manager_required
+@sales_head_required
 def manager_dashboard(request):
     manager = request.user
     today = timezone.now().date()
+    branch_ids = get_accessible_branch_ids(manager)
 
-    # Telecallers reporting to this Manager
-    telecallers = User.objects.filter(manager=manager)
+    # Telecallers within this Sales Head's accessible branches
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=branch_ids)
     telecaller_ids = list(telecallers.values_list('id', flat=True))
 
-    # Real database metrics scoped to Manager
+    # Real database metrics scoped to Sales Head
     my_leads_count = Lead.objects.filter(
         Q(assigned_manager=manager) | Q(assigned_telecaller_id__in=telecaller_ids)
     ).count()
     my_telecallers_count = telecallers.count()
-    
+
     todays_calls_count = CallHistory.objects.filter(
         Q(manager=manager) | Q(telecaller_id__in=telecaller_ids),
         call_started_at__date=today
     ).count()
-    
+
     completed_calls_count = CallHistory.objects.filter(
         Q(manager=manager) | Q(telecaller_id__in=telecaller_ids),
         call_status='Completed'
@@ -272,10 +278,11 @@ def manager_dashboard(request):
         'recent_activities': recent_activities,
     })
 
-@manager_required
+@sales_head_required
 def manager_telecallers_list(request):
     manager = request.user
-    telecallers = User.objects.filter(manager=manager).annotate(
+    branch_ids = get_accessible_branch_ids(manager)
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=branch_ids).annotate(
         lead_count=Count('telecaller_leads', distinct=True),
         call_count=Count('telecaller_calls', distinct=True),
         followup_count=Count('telecaller_followups', distinct=True)
@@ -285,11 +292,12 @@ def manager_telecallers_list(request):
         'telecallers': telecallers
     })
 
-@manager_required
+@sales_head_required
 def manager_telecaller_detail(request, pk):
     manager = request.user
-    # Ensure telecaller strictly belongs to this manager
-    telecaller = get_object_or_404(User, pk=pk, role=UserRole.TELECALLER, manager=manager)
+    branch_ids = get_accessible_branch_ids(manager)
+    # Ensure telecaller strictly belongs to an accessible branch
+    telecaller = get_object_or_404(User, pk=pk, role=UserRole.TELECALLER, branch_id__in=branch_ids)
 
     leads = Lead.objects.filter(assigned_telecaller=telecaller).select_related('channel', 'product')[:15]
     calls = CallHistory.objects.filter(caller=telecaller).select_related('lead')[:15]

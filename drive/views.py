@@ -60,11 +60,11 @@ def drive_dashboard(request):
     total_recordings_count = user_recordings.count()
     matched_recordings_count = user_recordings.filter(match_status='MATCHED').count()
     
-    if (request.user.is_admin_user or request.user.is_manager_user) and status_filter != 'Matched':
+    if (request.user.is_admin_user or request.user.is_sales_head_user) and status_filter != 'Matched':
         unmatched_recordings_count = CallRecording.objects.filter(match_status='UNMATCHED').count()
         unmatched_recordings = CallRecording.objects.filter(match_status='UNMATCHED').select_related('drive_connection').order_by('-created_at')
     else:
-        unmatched_recordings_count = CallRecording.objects.filter(match_status='UNMATCHED').count() if (request.user.is_admin_user or request.user.is_manager_user) else 0
+        unmatched_recordings_count = CallRecording.objects.filter(match_status='UNMATCHED').count() if (request.user.is_admin_user or request.user.is_sales_head_user) else 0
         unmatched_recordings = []
 
     last_sync = latest_connection.last_sync_at if latest_connection else None
@@ -87,7 +87,7 @@ def drive_dashboard(request):
         'search_file': search_file,
         'status_filter': status_filter,
         'is_admin': request.user.is_admin_user,
-        'is_manager': request.user.is_manager_user,
+        'is_manager': request.user.is_sales_head_user,
         'is_telecaller': request.user.is_telecaller_user,
     }
 
@@ -166,7 +166,7 @@ def drive_disconnect(request, connection_id):
     """
     Disconnects a Google Drive folder source.
     """
-    if not (request.user.is_admin_user or request.user.is_manager_user):
+    if not (request.user.is_admin_user or request.user.is_sales_head_user):
         messages.error(request, "Access denied: Only Admins or Managers can disconnect Drive folders.")
         return redirect('drive_dashboard')
 
@@ -223,7 +223,7 @@ def drive_stream_recording(request, recording_id):
         if not can_access_lead(request.user, recording.lead):
             raise PermissionDenied("Access denied: You do not have permission to access this recording.")
     else:
-        if not (request.user.is_admin_user or request.user.is_manager_user):
+        if not (request.user.is_admin_user or request.user.is_sales_head_user):
             raise PermissionDenied("Access denied: You do not have permission to access unmatched recordings.")
 
     # Return audio stream
