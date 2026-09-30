@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Counselor Dashboard - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Counselor Workspace</h1>
+    <p>Your leads, visits, and counseling pipeline</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'counselor_leads_list' %}" class="btn btn-primary">My Leads</a>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>My Leads</h4>
+      <div class="kpi-value">{{ my_leads_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap blue">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Visits</h4>
+      <div class="kpi-value">{{ visits_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap amber">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Counseling</h4>
+      <div class="kpi-value">{{ counseling_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap rose">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Pending Follow-ups</h4>
+      <div class="kpi-value">{{ pending_followups_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap rose">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Joined</h4>
+      <div class="kpi-value">{{ joined_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap green">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>My Lead Pipeline</h3>
+    </div>
+    <div class="crm-card-body">
+      <div style="max-height: 280px; position: relative;">
+        <canvas id="counselorLeadStatusChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Recent Leads</h3>
+      <a href="{% url 'counselor_leads_list' %}" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead><tr><th>Lead</th><th>Status</th><th>Updated</th></tr></thead>
+        <tbody>
+          {% for ld in recent_leads %}
+          <tr>
+            <td><strong><a href="{% url 'counselor_lead_detail' ld.pk %}">{{ ld.name }}</a></strong></td>
+            <td><span class="badge badge-{{ ld.status|lower|slugify }}">{{ ld.status }}</span></td>
+            <td>{{ ld.updated_at|date:"M d, H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">No leads handed off to you yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const ctx = document.getElementById('counselorLeadStatusChart');
+  if (ctx) {
+    const rawData = {{ status_dict|safe }};
+    const labels = Object.keys(rawData);
+    const data = Object.values(rawData);
+    if (labels.length === 0) { labels.push('No Leads Yet'); data.push(0); }
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: labels, datasets: [{ data: data, backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'] }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+});
+</script>
+{% endblock %}

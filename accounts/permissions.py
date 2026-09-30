@@ -8,6 +8,8 @@ from .models import UserRole
 _ROLE_DASHBOARD_URL_NAMES = {
     UserRole.ADMIN: 'admin_dashboard',
     UserRole.SALES_HEAD: 'manager_dashboard',
+    UserRole.BRANCH_HEAD: 'branch_head_dashboard',
+    UserRole.COUNSELOR: 'counselor_dashboard',
     UserRole.TELECALLER: 'telecaller_dashboard',
 }
 

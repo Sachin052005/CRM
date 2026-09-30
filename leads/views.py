@@ -13,7 +13,11 @@ from django.utils import timezone
 from django.http import JsonResponse, HttpResponse
 from django.core.exceptions import PermissionDenied
 from accounts.models import User, UserRole
-from accounts.permissions import admin_required, sales_head_required, telecaller_required, can_access_lead, get_accessible_branch_ids
+from accounts.permissions import (
+    admin_required, sales_head_required, telecaller_required, branch_head_required, counselor_required,
+    can_access_lead, can_view_lead, get_accessible_branch_ids,
+)
+from .handoff_service import change_lead_status
 from branches.models import Branch
 from channels.models import Channel
 from products.models import Product
@@ -2648,6 +2652,152 @@ def admin_lead_setup(request):
         'telecallers': telecallers,
         'branch_data': branch_data,
     })
+
+
+# ==========================================
+# BRANCH HEAD: LEAD MANAGEMENT (OWN BRANCH)
+# ==========================================
+
+@branch_head_required
+def branch_head_leads_list(request):
+    branch_head = request.user
+    leads_qs = Lead.objects.filter(branch_id=branch_head.branch_id).select_related(
+        'channel', 'product', 'assigned_telecaller', 'assigned_counselor', 'branch'
+    )
+
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    telecaller_filter = request.GET.get('telecaller', '').strip()
+
+    if search_query:
+        leads_qs = leads_qs.filter(
+            Q(name__icontains=search_query) |
+            Q(phone__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+    if status_filter:
+        leads_qs = leads_qs.filter(status=status_filter)
+    if telecaller_filter:
+        leads_qs = leads_qs.filter(assigned_telecaller_id=telecaller_filter)
+
+    leads_qs = leads_qs.order_by('-created_at')
+    paginator = Paginator(leads_qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id=branch_head.branch_id)
+
+    return render(request, 'branch_head/leads_list.html', {
+        'page_obj': page_obj,
+        'telecallers': telecallers,
+        'statuses': LeadStatus.choices,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'telecaller_filter': telecaller_filter,
+    })
+
+
+@branch_head_required
+def branch_head_lead_detail(request, pk):
+    lead = get_object_or_404(
+        Lead.objects.select_related('channel', 'product', 'branch', 'assigned_telecaller', 'assigned_counselor'),
+        pk=pk, branch_id=request.user.branch_id
+    )
+    if not can_view_lead(request.user, lead):
+        raise PermissionDenied("Access denied: Lead does not belong to your branch.")
+
+    followups = FollowUp.objects.filter(lead=lead).order_by('-created_at')
+    calls = CallHistory.objects.filter(lead=lead).select_related('caller').order_by('-call_started_at')
+    assignment_history = lead.assignment_history.all()[:10]
+    status_history = lead.status_history.all()[:10]
+
+    return render(request, 'branch_head/lead_detail.html', {
+        'lead': lead,
+        'followups': followups,
+        'calls': calls,
+        'assignment_history': assignment_history,
+        'status_history': status_history,
+    })
+
+
+# ==========================================
+# COUNSELOR: LEAD MANAGEMENT (OWN LEADS)
+# ==========================================
+
+COUNSELOR_STATUS_CHOICES = [
+    (LeadStatus.VISITED, LeadStatus.VISITED.label),
+    (LeadStatus.COUNSELING, LeadStatus.COUNSELING.label),
+    (LeadStatus.JOINED, LeadStatus.JOINED.label),
+    (LeadStatus.NOT_JOINED, LeadStatus.NOT_JOINED.label),
+    (LeadStatus.LOST, LeadStatus.LOST.label),
+]
+
+
+@counselor_required
+def counselor_leads_list(request):
+    counselor = request.user
+    leads_qs = Lead.objects.filter(assigned_counselor=counselor).select_related(
+        'channel', 'product', 'assigned_telecaller', 'branch'
+    )
+
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+
+    if search_query:
+        leads_qs = leads_qs.filter(
+            Q(name__icontains=search_query) |
+            Q(phone__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+    if status_filter:
+        leads_qs = leads_qs.filter(status=status_filter)
+
+    leads_qs = leads_qs.order_by('-updated_at')
+    paginator = Paginator(leads_qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'counselor/leads_list.html', {
+        'page_obj': page_obj,
+        'statuses': LeadStatus.choices,
+        'search_query': search_query,
+        'status_filter': status_filter,
+    })
+
+
+@counselor_required
+def counselor_lead_detail(request, pk):
+    lead = get_object_or_404(
+        Lead.objects.select_related('channel', 'product', 'branch', 'assigned_telecaller'),
+        pk=pk, assigned_counselor=request.user
+    )
+    if not can_view_lead(request.user, lead):
+        raise PermissionDenied("Access denied: Lead is not assigned to you.")
+
+    followups = FollowUp.objects.filter(lead=lead).order_by('-created_at')
+    calls = CallHistory.objects.filter(lead=lead).select_related('caller').order_by('-call_started_at')
+    status_history = lead.status_history.all()[:10]
+
+    return render(request, 'counselor/lead_detail.html', {
+        'lead': lead,
+        'followups': followups,
+        'calls': calls,
+        'status_history': status_history,
+        'status_choices': COUNSELOR_STATUS_CHOICES,
+    })
+
+
+@counselor_required
+def counselor_lead_update_status(request, pk):
+    lead = get_object_or_404(Lead, pk=pk, assigned_counselor=request.user)
+    if request.method == 'POST':
+        new_status = request.POST.get('status', '').strip()
+        remarks = request.POST.get('remarks', '').strip()
+        if new_status:
+            try:
+                change_lead_status(lead, new_status, request.user, remarks=remarks)
+                messages.success(request, f"Lead '{lead.name}' status updated to '{new_status}'.")
+            except PermissionDenied:
+                messages.error(request, "You do not have permission to change this lead's status.")
+    return redirect('counselor_lead_detail', pk=lead.pk)
 
 
 

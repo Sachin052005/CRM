@@ -60,4 +60,13 @@ urlpatterns = [
     path('telecaller/leads/import/', views.telecaller_lead_import, name='telecaller_lead_import'),
     path('telecaller/leads/<int:pk>/', views.telecaller_lead_detail, name='telecaller_lead_detail'),
     path('telecaller/leads/<int:pk>/edit/', views.telecaller_lead_edit, name='telecaller_lead_edit'),
+
+    # Branch Head Lead routes (own branch)
+    path('manager/branch-head/leads/', views.branch_head_leads_list, name='branch_head_leads_list'),
+    path('manager/branch-head/leads/<int:pk>/', views.branch_head_lead_detail, name='branch_head_lead_detail'),
+
+    # Counselor Lead routes (own leads)
+    path('counselor/leads/', views.counselor_leads_list, name='counselor_leads_list'),
+    path('counselor/leads/<int:pk>/', views.counselor_lead_detail, name='counselor_lead_detail'),
+    path('counselor/leads/<int:pk>/status/', views.counselor_lead_update_status, name='counselor_lead_update_status'),
 ]

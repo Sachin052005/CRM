@@ -71,3 +71,50 @@ class BranchHeadManagementTests(TestCase):
 
         resp_edit = self.client.get(reverse('sales_head_branch_head_edit', args=[bh2.pk]))
         self.assertEqual(resp_edit.status_code, 404)
+
+
+class BranchHeadOwnPortalTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.branch1 = Branch.objects.get_or_create(name="BHP Branch One")[0]
+        self.branch2 = Branch.objects.get_or_create(name="BHP Branch Two")[0]
+
+        self.branch_head = User.objects.create_user(
+            username="bhp_branchhead", password="pwd12345678", role=UserRole.BRANCH_HEAD, branch=self.branch1
+        )
+        self.other_branch_head = User.objects.create_user(
+            username="bhp_other_branchhead", password="pwd12345678", role=UserRole.BRANCH_HEAD, branch=self.branch2
+        )
+
+    def _counselor_payload(self):
+        return {
+            'first_name': 'Test', 'last_name': 'Counselor', 'username': 'newcounselor',
+            'email': 'newcounselor@example.com', 'phone': '9990002222', 'is_active': 'on',
+            'password': 'StrongPass123!', 'confirm_password': 'StrongPass123!',
+        }
+
+    def test_branch_head_can_create_counselor_with_auto_inherited_branch(self):
+        self.client.login(username="bhp_branchhead", password="pwd12345678")
+        resp = self.client.post(reverse('branch_head_counselor_create'), self._counselor_payload())
+        self.assertRedirects(resp, reverse('branch_head_counselors_list'))
+
+        counselor = User.objects.get(username='newcounselor')
+        self.assertEqual(counselor.role, UserRole.COUNSELOR)
+        self.assertEqual(counselor.branch_id, self.branch1.id)
+
+    def test_branch_head_dashboard_renders_and_scopes_to_own_branch(self):
+        User.objects.create_user(username='bhp_counselor', password='pwd12345678', role=UserRole.COUNSELOR, branch=self.branch1)
+        User.objects.create_user(username='bhp_other_counselor', password='pwd12345678', role=UserRole.COUNSELOR, branch=self.branch2)
+
+        self.client.login(username="bhp_branchhead", password="pwd12345678")
+        resp = self.client.get(reverse('branch_head_dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['counselors_count'], 1)
+
+    def test_branch_head_cannot_access_counselor_from_another_branch(self):
+        other_counselor = User.objects.create_user(
+            username='bhp_foreign_counselor', password='pwd12345678', role=UserRole.COUNSELOR, branch=self.branch2
+        )
+        self.client.login(username="bhp_branchhead", password="pwd12345678")
+        resp = self.client.get(reverse('branch_head_counselor_detail', args=[other_counselor.pk]))
+        self.assertEqual(resp.status_code, 404)

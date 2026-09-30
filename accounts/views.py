@@ -14,6 +14,10 @@ def login_redirect(request):
         return redirect('admin_dashboard')
     elif request.user.is_sales_head_user:
         return redirect('manager_dashboard')
+    elif request.user.is_branch_head_user:
+        return redirect('branch_head_dashboard')
+    elif request.user.is_counselor_user:
+        return redirect('counselor_dashboard')
     elif request.user.is_telecaller_user:
         return redirect('telecaller_dashboard')
     return redirect('login')

@@ -17,4 +17,14 @@ urlpatterns = [
     path('manager/branch-heads/<int:pk>/edit/', views.sales_head_branch_head_edit, name='sales_head_branch_head_edit'),
     path('manager/branch-heads/<int:pk>/toggle/', views.sales_head_branch_head_toggle_status, name='sales_head_branch_head_toggle_status'),
     path('manager/branch-heads/<int:pk>/password/', views.sales_head_branch_head_change_password, name='sales_head_branch_head_change_password'),
+
+    # Branch Head's own portal
+    path('manager/branch-head/dashboard/', views.branch_head_dashboard, name='branch_head_dashboard'),
+    path('manager/branch-head/counselors/', views.branch_head_counselors_list, name='branch_head_counselors_list'),
+    path('manager/branch-head/counselors/create/', views.branch_head_counselor_create, name='branch_head_counselor_create'),
+    path('manager/branch-head/counselors/<int:pk>/', views.branch_head_counselor_detail, name='branch_head_counselor_detail'),
+    path('manager/branch-head/counselors/<int:pk>/edit/', views.branch_head_counselor_edit, name='branch_head_counselor_edit'),
+    path('manager/branch-head/counselors/<int:pk>/toggle/', views.branch_head_counselor_toggle_status, name='branch_head_counselor_toggle_status'),
+    path('manager/branch-head/counselors/<int:pk>/password/', views.branch_head_counselor_change_password, name='branch_head_counselor_change_password'),
+    path('manager/branch-head/telecallers/', views.branch_head_telecallers_list, name='branch_head_telecallers_list'),
 ]

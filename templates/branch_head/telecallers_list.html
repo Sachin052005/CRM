@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Telecallers - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Branch Telecallers</h1>
+    <p>All telecallers in {{ user.branch.name|default:"your branch" }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'branch_head_telecaller_create' %}" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Add Telecaller
+    </a>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Telecaller</th>
+          <th>Email</th>
+          <th>Counselor</th>
+          <th>Assigned Leads</th>
+          <th>Calls Logged</th>
+          <th>Pending Follow-ups</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in telecallers %}
+        <tr>
+          <td>
+            <strong>{{ t.get_full_name|default:t.username }}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ t.username }}</div>
+          </td>
+          <td>{{ t.email }}</td>
+          <td>{% if t.counselor %}{{ t.counselor.get_full_name|default:t.counselor.username }}{% else %}Unassigned{% endif %}</td>
+          <td><span class="badge badge-manager">{{ t.lead_count }}</span></td>
+          <td>{{ t.call_count }}</td>
+          <td><span class="badge badge-pending">{{ t.followup_count }}</span></td>
+          <td>
+            {% if t.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+              </div>
+              <h4>No Telecallers Yet</h4>
+              <p>Add a telecaller to start working leads in this branch.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

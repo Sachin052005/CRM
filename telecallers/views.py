@@ -4,8 +4,9 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.utils import timezone
+from django.core.exceptions import PermissionDenied
 from accounts.models import User, UserRole
-from accounts.permissions import admin_required, telecaller_required
+from accounts.permissions import admin_required, telecaller_required, branch_head_required, can_create_user
 from branches.models import Branch
 from leads.models import Lead, TelecallerLeadSetup
 from calls.models import CallHistory, CallStatus, CallOutcome
@@ -14,7 +15,10 @@ from activities.models import Activity
 from activities.utils import log_activity
 from branches.utils import get_admin_selected_branch
 from django.contrib.auth.forms import SetPasswordForm
-from .forms import AdminTelecallerCreateForm, AdminTelecallerEditForm, TelecallerAssignForm
+from .forms import (
+    AdminTelecallerCreateForm, AdminTelecallerEditForm, TelecallerAssignForm,
+    BranchHeadTelecallerCreateForm,
+)
 
 # ==========================================
 # ADMIN: TELECALLER MANAGEMENT
@@ -433,3 +437,38 @@ def telecaller_dashboard(request):
         'status_dict': status_dict,
         'recent_activities': recent_activities,
     })
+
+
+# ==========================================
+# BRANCH HEAD: CREATE TELECALLER (OWN BRANCH)
+# ==========================================
+
+@branch_head_required
+def branch_head_telecaller_create(request):
+    branch_head = request.user
+    if request.method == 'POST':
+        form = BranchHeadTelecallerCreateForm(request.POST, branch=branch_head.branch)
+        if form.is_valid():
+            if not can_create_user(branch_head, UserRole.TELECALLER, branch_head.branch):
+                raise PermissionDenied("You do not have permission to create a Telecaller for this branch.")
+            telecaller = form.save()
+            TelecallerLeadSetup.objects.get_or_create(
+                telecaller=telecaller,
+                branch=telecaller.branch,
+                defaults={'assignment_percentage': 0, 'lead_count': 0, 'is_active': False}
+            )
+            mgr_str = f" under Counselor '{telecaller.counselor.username}'" if telecaller.counselor else " (unassigned counselor)"
+            log_activity(
+                user=branch_head,
+                action="Telecaller Created",
+                description=f"Branch Head created Telecaller '{telecaller.username}' ({telecaller.email}){mgr_str}.",
+                object_type="User",
+                object_id=telecaller.pk,
+                request=request
+            )
+            messages.success(request, f"Telecaller '{telecaller.username}' created successfully.")
+            return redirect('branch_head_telecallers_list')
+    else:
+        form = BranchHeadTelecallerCreateForm(branch=branch_head.branch)
+
+    return render(request, 'branch_head/telecaller_create.html', {'form': form})

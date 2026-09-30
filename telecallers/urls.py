@@ -12,6 +12,9 @@ urlpatterns = [
     path('admin/telecallers/<int:pk>/password/', views.admin_telecaller_change_password, name='admin_telecaller_change_password'),
     path('admin/telecallers/<int:pk>/delete/', views.admin_telecaller_delete, name='admin_telecaller_delete'),
 
+    # Branch Head telecaller creation (own branch)
+    path('manager/branch-head/telecallers/create/', views.branch_head_telecaller_create, name='branch_head_telecaller_create'),
+
     # Telecaller workspace portal
     path('telecaller/dashboard/', views.telecaller_dashboard, name='telecaller_dashboard'),
 ]

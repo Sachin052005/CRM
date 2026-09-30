@@ -89,12 +89,16 @@ def admin_dashboard(request):
 
     if selected_branch:
         total_managers = User.objects.filter(role=UserRole.SALES_HEAD, branch_access__branch=selected_branch).count()
+        total_branch_heads = User.objects.filter(role=UserRole.BRANCH_HEAD, branch=selected_branch).count()
+        total_counselors = User.objects.filter(role=UserRole.COUNSELOR, branch=selected_branch).count()
         total_telecallers = User.objects.filter(role=UserRole.TELECALLER, branch=selected_branch).count()
         manager_performance = manager_performance.filter(branch_access__branch=selected_branch).distinct()
         telecaller_performance = telecaller_performance.filter(branch=selected_branch)
         activities_qs = activities_qs.filter(user__branch=selected_branch)
     else:
         total_managers = User.objects.filter(role=UserRole.SALES_HEAD).count()
+        total_branch_heads = User.objects.filter(role=UserRole.BRANCH_HEAD).count()
+        total_counselors = User.objects.filter(role=UserRole.COUNSELOR).count()
         total_telecallers = User.objects.filter(role=UserRole.TELECALLER).count()
 
     pending_followups = followups_qs.filter(status=FollowUpStatus.PENDING, follow_up_date__gte=today).count()
@@ -141,6 +145,8 @@ def admin_dashboard(request):
         'new_leads': new_leads,
         'active_leads': active_leads,
         'total_managers': total_managers,
+        'total_branch_heads': total_branch_heads,
+        'total_counselors': total_counselors,
         'total_telecallers': total_telecallers,
         'pending_followups': pending_followups,
         'overdue_followups': overdue_followups,

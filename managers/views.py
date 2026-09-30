@@ -211,6 +211,7 @@ def manager_dashboard(request):
     manager = request.user
     today = timezone.now().date()
     branch_ids = get_accessible_branch_ids(manager)
+    my_branches = Branch.objects.filter(id__in=branch_ids)
 
     # Telecallers within this Sales Head's accessible branches
     telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=branch_ids)
@@ -267,6 +268,7 @@ def manager_dashboard(request):
     ).select_related('user')[:8]
 
     return render(request, 'manager_dashboard/dashboard.html', {
+        'my_branches': my_branches,
         'my_leads_count': my_leads_count,
         'my_telecallers_count': my_telecallers_count,
         'todays_calls_count': todays_calls_count,

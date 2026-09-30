@@ -121,6 +121,27 @@ class AccountsAndAuthTests(TestCase):
         })
         self.assertRedirects(response, reverse('telecaller_dashboard'))
 
+    def test_branch_head_and_counselor_login_redirect_to_their_dashboards(self):
+        branch_head = User.objects.create_user(
+            username="testbranchhead", email="branchhead@test.com", password="branchheadpass123",
+            role=UserRole.BRANCH_HEAD, branch=self.branch
+        )
+        counselor = User.objects.create_user(
+            username="testcounselor", email="counselor@test.com", password="counselorpass123",
+            role=UserRole.COUNSELOR, branch=self.branch
+        )
+
+        response = self.client.post(reverse('login'), {
+            'username': 'testbranchhead', 'password': 'branchheadpass123'
+        })
+        self.assertRedirects(response, reverse('branch_head_dashboard'))
+
+        self.client.logout()
+        response = self.client.post(reverse('login'), {
+            'username': 'testcounselor', 'password': 'counselorpass123'
+        })
+        self.assertRedirects(response, reverse('counselor_dashboard'))
+
     def test_password_reset_views(self):
         response = self.client.get(reverse('password_reset'))
         self.assertEqual(response.status_code, 200)

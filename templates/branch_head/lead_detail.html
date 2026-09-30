@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}{{ lead.name }} - Branch Lead{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>{{ lead.name }}</h1>
+    <p>Lead Status: <span class="badge badge-{{ lead.status|lower|slugify }}">{{ lead.status }}</span>
+      &bull; Telecaller: <strong>{% if lead.assigned_telecaller %}{{ lead.assigned_telecaller.get_full_name|default:lead.assigned_telecaller.username }}{% else %}Unassigned{% endif %}</strong>
+      &bull; Counselor: <strong>{% if lead.assigned_counselor %}{{ lead.assigned_counselor.get_full_name|default:lead.assigned_counselor.username }}{% else %}Not yet handed off{% endif %}</strong>
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'branch_head_leads_list' %}" class="btn btn-secondary">Back to Leads</a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <div class="crm-card">
+    <div class="crm-card-header"><h3>Contact & Course Details</h3></div>
+    <div class="crm-card-body">
+      <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px; font-size: 0.9rem;">
+        <span style="color: var(--text-muted);">Phone:</span><strong>{{ lead.phone }}</strong>
+        <span style="color: var(--text-muted);">Email:</span><span>{{ lead.email|default:"-" }}</span>
+        <span style="color: var(--text-muted);">Channel:</span><span>{{ lead.channel.name|default:"-" }}</span>
+        <span style="color: var(--text-muted);">Product/Course:</span><strong>{{ lead.product.name|default:"-" }}</strong>
+        <span style="color: var(--text-muted);">Branch:</span><span>{{ lead.branch.name|default:"-" }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="crm-card">
+    <div class="crm-card-header"><h3>Notes</h3></div>
+    <div class="crm-card-body">
+      <div style="background: var(--bg-body); padding: 14px; border-radius: var(--radius-sm); font-size: 0.875rem; white-space: pre-wrap; min-height: 120px;">
+        {{ lead.notes|default:"No notes added yet." }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <div class="crm-card">
+    <div class="crm-card-header"><h3>Call Log ({{ calls|length }})</h3></div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead><tr><th>Caller</th><th>Duration</th><th>Outcome</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for c in calls %}
+          <tr><td>{{ c.caller.username }}</td><td>{{ c.formatted_duration }}</td><td><span class="badge badge-telecaller">{{ c.call_outcome }}</span></td><td>{{ c.call_started_at|date:"M d, H:i" }}</td></tr>
+          {% empty %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No calls recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="crm-card">
+    <div class="crm-card-header"><h3>Follow-ups ({{ followups|length }})</h3></div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead><tr><th>Date</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          {% for f in followups %}
+          <tr><td>{{ f.follow_up_date }}</td><td><span class="badge badge-{{ f.display_status|lower }}">{{ f.display_status }}</span></td><td>{{ f.notes|truncatechars:35|default:"-" }}</td></tr>
+          {% empty %}
+          <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">No follow-ups recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <div class="crm-card">
+    <div class="crm-card-header"><h3>Assignment History</h3></div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead><tr><th>From</th><th>To</th><th>Role</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for h in assignment_history %}
+          <tr>
+            <td>{% if h.from_user %}{{ h.from_user.get_full_name|default:h.from_user.username }}{% else %}-{% endif %}</td>
+            <td>{% if h.to_user %}{{ h.to_user.get_full_name|default:h.to_user.username }}{% else %}-{% endif %}</td>
+            <td>{{ h.to_role|title }}</td>
+            <td>{{ h.created_at|date:"M d, H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No reassignments yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="crm-card">
+    <div class="crm-card-header"><h3>Status History</h3></div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead><tr><th>From</th><th>To</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for h in status_history %}
+          <tr>
+            <td>{{ h.old_status|default:"-" }}</td>
+            <td><span class="badge badge-{{ h.new_status|lower|slugify }}">{{ h.new_status }}</span></td>
+            <td>{{ h.created_at|date:"M d, H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">No status changes recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

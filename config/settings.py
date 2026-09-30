@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'leads.apps.LeadsConfig',
     'managers.apps.ManagersConfig',
     'branch_heads.apps.BranchHeadsConfig',
+    'counselors.apps.CounselorsConfig',
     'telecallers.apps.TelecallersConfig',
     'followups.apps.FollowupsConfig',
     'calls.apps.CallsConfig',

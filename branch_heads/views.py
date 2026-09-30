@@ -7,16 +7,19 @@ from django.db.models import Count, Q
 
 from accounts.models import User, UserRole
 from accounts.permissions import (
-    admin_required, sales_head_required, get_accessible_branch_ids,
+    admin_required, sales_head_required, branch_head_required, get_accessible_branch_ids,
     can_create_user, can_manage_user,
 )
 from branches.models import Branch
-from leads.models import Lead
+from leads.models import Lead, LeadStatus
 from calls.models import CallHistory
 from followups.models import FollowUp, FollowUpStatus
 from activities.models import Activity
 from activities.utils import log_activity
-from .forms import BranchHeadCreateForm, BranchHeadEditForm
+from .forms import (
+    BranchHeadCreateForm, BranchHeadEditForm,
+    BranchHeadCounselorCreateForm, BranchHeadCounselorEditForm,
+)
 
 
 def _branch_head_context(branch_head):
@@ -349,4 +352,234 @@ def sales_head_branch_head_change_password(request, pk):
     return render(request, 'manager/branch_head_change_password.html', {
         'form': form,
         'branch_head': branch_head,
+    })
+
+
+# ==========================================
+# BRANCH HEAD: OWN PORTAL (SCOPED TO OWN BRANCH)
+# ==========================================
+
+@branch_head_required
+def branch_head_dashboard(request):
+    branch_head = request.user
+    branch_id = branch_head.branch_id
+
+    counselors = User.objects.filter(role=UserRole.COUNSELOR, branch_id=branch_id)
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id=branch_id)
+
+    leads_qs = Lead.objects.filter(branch_id=branch_id)
+    branch_leads_count = leads_qs.count()
+    visits_count = leads_qs.filter(status__in=[LeadStatus.VISIT_SCHEDULED, LeadStatus.VISITED]).count()
+    joined_count = leads_qs.filter(status=LeadStatus.JOINED).count()
+
+    pending_followups_count = FollowUp.objects.filter(
+        telecaller__branch_id=branch_id, status=FollowUpStatus.PENDING
+    ).count()
+
+    counselor_perf = counselors.annotate(
+        lead_count=Count('counselor_leads', distinct=True),
+        joined_count=Count('counselor_leads', filter=Q(counselor_leads__status=LeadStatus.JOINED), distinct=True),
+    )
+    telecaller_perf = telecallers.annotate(
+        lead_count=Count('telecaller_leads', distinct=True),
+        call_count=Count('telecaller_calls', distinct=True),
+        followup_count=Count('telecaller_followups', distinct=True),
+    )
+
+    status_counts = leads_qs.values('status').annotate(total=Count('id'))
+    status_dict = {item['status']: item['total'] for item in status_counts}
+
+    recent_activities = Activity.objects.filter(
+        Q(user=branch_head) | Q(user__branch_id=branch_id)
+    ).select_related('user')[:8]
+
+    return render(request, 'branch_head_dashboard/dashboard.html', {
+        'branch_leads_count': branch_leads_count,
+        'counselors_count': counselors.count(),
+        'telecallers_count': telecallers.count(),
+        'pending_followups_count': pending_followups_count,
+        'visits_count': visits_count,
+        'joined_count': joined_count,
+        'counselor_perf': counselor_perf,
+        'telecaller_perf': telecaller_perf,
+        'status_dict': status_dict,
+        'recent_activities': recent_activities,
+    })
+
+
+def _counselor_context(counselor):
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, counselor=counselor)
+    leads = Lead.objects.filter(assigned_counselor=counselor)
+    return {
+        'counselor': counselor,
+        'telecallers': telecallers,
+        'total_leads': leads.count(),
+        'joined_count': leads.filter(status=LeadStatus.JOINED).count(),
+        'recent_activities': Activity.objects.filter(user=counselor)[:10],
+    }
+
+
+def _counselor_list_queryset(branch_id, search_query, status_filter):
+    qs = User.objects.filter(role=UserRole.COUNSELOR, branch_id=branch_id)
+    if search_query:
+        qs = qs.filter(
+            Q(username__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
+    if status_filter == 'active':
+        qs = qs.filter(is_active=True)
+    elif status_filter == 'inactive':
+        qs = qs.filter(is_active=False)
+    return qs.annotate(
+        telecaller_count=Count('assigned_telecallers', distinct=True),
+        lead_count=Count('counselor_leads', distinct=True),
+    ).order_by('-date_joined')
+
+
+@branch_head_required
+def branch_head_counselors_list(request):
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+
+    counselors_qs = _counselor_list_queryset(request.user.branch_id, search_query, status_filter)
+    paginator = Paginator(counselors_qs, 12)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'branch_head/counselors_list.html', {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+    })
+
+
+@branch_head_required
+def branch_head_counselor_create(request):
+    branch_head = request.user
+    if request.method == 'POST':
+        form = BranchHeadCounselorCreateForm(request.POST)
+        if form.is_valid():
+            if not can_create_user(branch_head, UserRole.COUNSELOR, branch_head.branch):
+                raise PermissionDenied("You do not have permission to create a Counselor for this branch.")
+            counselor = form.save(branch=branch_head.branch)
+            log_activity(
+                user=branch_head,
+                action="Counselor Created",
+                description=f"Branch Head created Counselor account '{counselor.username}' for branch '{branch_head.branch.name}'.",
+                object_type="User",
+                object_id=counselor.pk,
+                request=request
+            )
+            messages.success(request, f"Counselor '{counselor.username}' was successfully created.")
+            return redirect('branch_head_counselors_list')
+    else:
+        form = BranchHeadCounselorCreateForm()
+
+    return render(request, 'branch_head/counselor_create.html', {'form': form})
+
+
+@branch_head_required
+def branch_head_counselor_detail(request, pk):
+    counselor = get_object_or_404(User, pk=pk, role=UserRole.COUNSELOR, branch_id=request.user.branch_id)
+    if not can_manage_user(request.user, counselor):
+        raise PermissionDenied("You do not have permission to view this Counselor.")
+    return render(request, 'branch_head/counselor_detail.html', _counselor_context(counselor))
+
+
+@branch_head_required
+def branch_head_counselor_edit(request, pk):
+    counselor = get_object_or_404(User, pk=pk, role=UserRole.COUNSELOR, branch_id=request.user.branch_id)
+    if not can_manage_user(request.user, counselor):
+        raise PermissionDenied("You do not have permission to edit this Counselor.")
+
+    if request.method == 'POST':
+        form = BranchHeadCounselorEditForm(request.POST, instance=counselor)
+        if form.is_valid():
+            form.save()
+            log_activity(
+                user=request.user,
+                action="Counselor Updated",
+                description=f"Branch Head updated Counselor profile for '{counselor.username}'.",
+                object_type="User",
+                object_id=counselor.pk,
+                request=request
+            )
+            messages.success(request, f"Counselor '{counselor.username}' profile updated.")
+            return redirect('branch_head_counselor_detail', pk=counselor.pk)
+    else:
+        form = BranchHeadCounselorEditForm(instance=counselor)
+
+    return render(request, 'branch_head/counselor_edit.html', {'form': form, 'counselor': counselor})
+
+
+@branch_head_required
+def branch_head_counselor_toggle_status(request, pk):
+    counselor = get_object_or_404(User, pk=pk, role=UserRole.COUNSELOR, branch_id=request.user.branch_id)
+    if not can_manage_user(request.user, counselor):
+        raise PermissionDenied("You do not have permission to manage this Counselor.")
+
+    counselor.is_active = not counselor.is_active
+    counselor.save()
+    status_str = "activated" if counselor.is_active else "deactivated"
+    log_activity(
+        user=request.user,
+        action="Counselor Status Changed",
+        description=f"Branch Head {status_str} Counselor '{counselor.username}'.",
+        object_type="User",
+        object_id=counselor.pk,
+        request=request
+    )
+    messages.success(request, f"Counselor '{counselor.username}' has been {status_str}.")
+    return redirect('branch_head_counselors_list')
+
+
+@branch_head_required
+def branch_head_counselor_change_password(request, pk):
+    counselor = get_object_or_404(User, pk=pk, role=UserRole.COUNSELOR, branch_id=request.user.branch_id)
+    if not can_manage_user(request.user, counselor):
+        raise PermissionDenied("You do not have permission to manage this Counselor.")
+
+    if request.method == 'POST':
+        form = SetPasswordForm(counselor, request.POST)
+        if form.is_valid():
+            form.save()
+            log_activity(
+                user=request.user,
+                action="Password Reset by Branch Head",
+                description=f"Branch Head reset password for Counselor '{counselor.username}'.",
+                object_type="User",
+                object_id=counselor.pk,
+                request=request
+            )
+            messages.success(request, f"Password for Counselor '{counselor.username}' has been successfully changed.")
+            from activities.services import create_notification
+            create_notification(
+                recipient=counselor,
+                title="Password Changed",
+                message="Your account password was updated by your Branch Head.",
+                notification_type="password_changed"
+            )
+            return redirect('branch_head_counselor_detail', pk=counselor.pk)
+    else:
+        form = SetPasswordForm(counselor)
+
+    return render(request, 'branch_head/counselor_change_password.html', {
+        'form': form,
+        'counselor': counselor,
+    })
+
+
+@branch_head_required
+def branch_head_telecallers_list(request):
+    branch_id = request.user.branch_id
+    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id=branch_id).select_related('counselor').annotate(
+        lead_count=Count('telecaller_leads', distinct=True),
+        call_count=Count('telecaller_calls', distinct=True),
+        followup_count=Count('telecaller_followups', distinct=True),
+    ).order_by('-date_joined')
+
+    return render(request, 'branch_head/telecallers_list.html', {
+        'telecallers': telecallers
     })

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Counselors - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Counselors</h1>
+    <p>Manage counselors for {{ user.branch.name|default:"your branch" }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'branch_head_counselor_create' %}" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Add Counselor
+    </a>
+  </div>
+</div>
+
+<div class="filter-card">
+  <form method="GET" class="filter-form">
+    <div class="filter-col" style="flex: 2;">
+      <label>Search</label>
+      <input type="text" name="search" class="form-control" placeholder="Search by name, username, email, phone..." value="{{ search_query }}">
+    </div>
+    <div class="filter-col">
+      <label>Status</label>
+      <select name="status" class="form-select">
+        <option value="">All Statuses</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <a href="{% url 'branch_head_counselors_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Counselor</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Telecallers</th>
+          <th>Leads</th>
+          <th>Status</th>
+          <th>Created Date</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in page_obj %}
+        <tr>
+          <td>
+            <strong><a href="{% url 'branch_head_counselor_detail' c.pk %}">{{ c.get_full_name|default:c.username }}</a></strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ c.username }}</div>
+          </td>
+          <td>{{ c.email }}</td>
+          <td>{{ c.phone|default:"-" }}</td>
+          <td><span class="badge badge-telecaller">{{ c.telecaller_count }}</span></td>
+          <td><span class="badge badge-manager">{{ c.lead_count }}</span></td>
+          <td>
+            {% if c.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
+          </td>
+          <td>{{ c.date_joined|date:"M d, Y" }}</td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px;">
+              <a href="{% url 'branch_head_counselor_detail' c.pk %}" class="btn btn-secondary btn-sm">View</a>
+              <a href="{% url 'branch_head_counselor_edit' c.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'branch_head_counselor_toggle_status' c.pk %}" class="btn btn-sm {% if c.is_active %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change this counselor's account status?">
+                {% if c.is_active %}Deactivate{% else %}Activate{% endif %}
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+              </div>
+              <h4>No Counselors Found</h4>
+              <p>No counselors match your query. Click "Add Counselor" to onboard one for your branch.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

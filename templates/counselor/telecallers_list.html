@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}My Telecallers - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>My Telecallers</h1>
+    <p>Telecallers reporting to you</p>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Telecaller</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Assigned Leads</th>
+          <th>Calls Logged</th>
+          <th>Pending Follow-ups</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in telecallers %}
+        <tr>
+          <td>
+            <strong>{{ t.get_full_name|default:t.username }}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ t.username }}</div>
+          </td>
+          <td>{{ t.email }}</td>
+          <td>{{ t.phone|default:"-" }}</td>
+          <td><span class="badge badge-manager">{{ t.lead_count }}</span></td>
+          <td>{{ t.call_count }}</td>
+          <td><span class="badge badge-pending">{{ t.followup_count }}</span></td>
+          <td>
+            {% if t.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+              </div>
+              <h4>No Telecallers Assigned</h4>
+              <p>You don't have any telecallers reporting to you yet.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

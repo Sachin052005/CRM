@@ -13,6 +13,21 @@
   </div>
 </div>
 
+<!-- My Branches -->
+<div class="crm-card" style="margin-bottom: 24px;">
+  <div class="crm-card-header">
+    <h3>My Branches</h3>
+    <a href="{% url 'sales_head_branch_heads_list' %}" class="btn btn-secondary btn-sm">Branch Heads</a>
+  </div>
+  <div class="crm-card-body" style="display: flex; flex-wrap: wrap; gap: 10px;">
+    {% for b in my_branches %}
+    <span class="badge badge-manager" style="font-size: 0.85rem; padding: 6px 12px;">{{ b.name }}</span>
+    {% empty %}
+    <span style="color: var(--text-muted); font-size: 0.875rem;">No branches assigned yet.</span>
+    {% endfor %}
+  </div>
+</div>
+
 <!-- Manager KPI Grid -->
 <div class="kpi-grid">
   <div class="kpi-card">
