@@ -1,6 +1,8 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from accounts.models import User, UserRole
+from branches.models import Branch
+from leads.models import Lead
 
 class EndToEndIntegrationTests(TestCase):
     def setUp(self):
@@ -71,3 +73,52 @@ class EndToEndIntegrationTests(TestCase):
         for u in urls:
             res = self.client.get(reverse(u))
             self.assertEqual(res.status_code, 200, f"Failed on telecaller URL: {u}")
+
+
+class ErrorPageTests(TestCase):
+    """Confirms Django renders our custom 403 page, not its default, for a real
+    PermissionDenied raised by object-level authorization checks."""
+
+    def setUp(self):
+        self.client = Client()
+        self.branch = Branch.objects.create(name="ErrorPageTestBranch")
+        self.telecaller = User.objects.create_user(
+            username="errpage_tc", password="pwd12345678", role=UserRole.TELECALLER, branch=self.branch
+        )
+        other_telecaller = User.objects.create_user(
+            username="errpage_tc_other", password="pwd12345678", role=UserRole.TELECALLER, branch=self.branch
+        )
+        self.other_lead = Lead.objects.create(
+            name="Not Mine", phone="9990000000", branch=self.branch, assigned_telecaller=other_telecaller
+        )
+
+    def test_permission_denied_renders_custom_403_page(self):
+        self.client.login(username="errpage_tc", password="pwd12345678")
+        resp = self.client.get(reverse('telecaller_lead_detail', args=[self.other_lead.pk]))
+        self.assertEqual(resp.status_code, 403)
+        content = resp.content.decode()
+        self.assertIn("Access Denied", content)
+        self.assertNotIn("403 Forbidden", content)
+
+
+class CleanErrorMessageTests(TestCase):
+    """A failed lead import must show a clean message, never the raw exception text."""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = User.objects.create_superuser(
+            username="cleanerr_admin", password="pwd12345678", email="cleanerr_admin@test.com"
+        )
+        self.client.login(username="cleanerr_admin", password="pwd12345678")
+
+    def test_corrupt_xlsx_upload_shows_clean_message_not_raw_exception(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        corrupt_file = SimpleUploadedFile(
+            "leads.xlsx", b"this is not a real xlsx file", content_type="application/vnd.openxmlformats"
+        )
+        resp = self.client.post(reverse('admin_leads_import'), {'file': corrupt_file}, follow=True)
+        content = resp.content.decode()
+        self.assertIn("Unable to process the file", content)
+        self.assertNotIn("BadZipFile", content)
+        self.assertNotIn("Traceback", content)

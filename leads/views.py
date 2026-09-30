@@ -317,8 +317,9 @@ def admin_leads_import(request):
                 successful, failed, errors = import_leads_file(uploaded_file, request.user)
                 messages.success(request, f"Import complete! {successful} leads imported successfully. {failed} failed.")
                 return redirect('admin_leads_list')
-            except Exception as e:
-                messages.error(request, f"Failed to process file: {str(e)}")
+            except Exception:
+                logger.exception("Lead file import failed (admin)")
+                messages.error(request, "Unable to process the file. Please check the format and try again.")
 
     return render(request, 'admin/lead_import.html', {
         'form': form,
@@ -446,8 +447,9 @@ def manager_lead_import(request):
                 successful, failed, errors = import_leads_file(uploaded_file, request.user)
                 messages.success(request, f"Import complete! {successful} leads imported successfully. {failed} failed.")
                 return redirect('manager_leads_list')
-            except Exception as e:
-                messages.error(request, f"Failed to process file: {str(e)}")
+            except Exception:
+                logger.exception("Lead file import failed (sales head)")
+                messages.error(request, "Unable to process the file. Please check the format and try again.")
 
     import_history = LeadImportHistory.objects.filter(uploaded_by=request.user).order_by('-uploaded_on')[:10]
     return render(request, 'manager/lead_import.html', {
@@ -637,8 +639,9 @@ def telecaller_lead_import(request):
                 successful, failed, errors = import_leads_file(uploaded_file, request.user)
                 messages.success(request, f"Import complete! {successful} leads imported successfully. {failed} failed.")
                 return redirect('telecaller_leads_list')
-            except Exception as e:
-                messages.error(request, f"Failed to process file: {str(e)}")
+            except Exception:
+                logger.exception("Lead file import failed (telecaller)")
+                messages.error(request, "Unable to process the file. Please check the format and try again.")
 
     import_history = LeadImportHistory.objects.filter(uploaded_by=request.user).order_by('-uploaded_on')[:10]
     return render(request, 'telecaller/lead_import.html', {
@@ -1065,8 +1068,9 @@ def admin_offline_leads_upload(request):
                 messages.success(request, f"Upload complete! {successful} leads imported and auto-assigned.")
             else:
                 messages.warning(request, f"Upload complete: {successful} leads created/updated, {failed} failed.")
-        except Exception as e:
-            messages.error(request, f"File import error: {str(e)}")
+        except Exception:
+            logger.exception("Offline lead upload failed")
+            messages.error(request, "Unable to process the file. Please check the format and try again.")
     else:
         messages.error(request, "Please choose a valid .csv or .xlsx file to upload.")
     return redirect('admin_offline_leads_list')
@@ -1445,8 +1449,9 @@ def admin_google_oauth_connect(request):
     try:
         start_desktop_oauth_flow(port=0, timeout_seconds=120)
         messages.success(request, "Google Sheets connected successfully! Authorized with OAuth 2.0.")
-    except Exception as e:
-        messages.error(request, f"Google authentication failed: {e}")
+    except Exception:
+        logger.exception("Google OAuth connect flow failed")
+        messages.error(request, "Connection failed. Please check your Google account configuration and try again.")
 
     return redirect('admin_offline_leads')
 
@@ -1551,8 +1556,9 @@ def admin_google_sheet_test(request, connection_id=None):
             'headers': headers,
             'row_count': len(rows),
         })
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': f"Failed to connect to spreadsheet: {str(e)}"}, status=400)
+    except Exception:
+        logger.exception("Google Sheet connection test failed")
+        return JsonResponse({'success': False, 'error': "Connection failed. Please check the spreadsheet URL and sharing permissions."}, status=400)
 
 
 @admin_required
@@ -1937,10 +1943,12 @@ def admin_duplicate_leads_keep_single(request):
         messages.success(request, msg)
         return redirect('admin_duplicate_leads')
 
-    except Exception as e:
+    except Exception:
+        logger.exception("Error consolidating duplicate leads")
+        clean_msg = "Unable to consolidate these duplicate leads. Please try again."
         if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
-            return JsonResponse({'success': False, 'error': str(e)}, status=400)
-        messages.error(request, f"Error consolidating duplicate leads: {str(e)}")
+            return JsonResponse({'success': False, 'error': clean_msg}, status=400)
+        messages.error(request, clean_msg)
         return redirect('admin_duplicate_leads')
 
 
@@ -2542,8 +2550,9 @@ def admin_lead_setup(request):
                     return JsonResponse({'success': True, 'message': msg})
                 messages.success(request, msg)
                 return redirect('admin_lead_setup')
-            except Exception as e:
-                err_msg = f"Failed to save assignment: {str(e)}"
+            except Exception:
+                logger.exception("Failed to save telecaller lead setup assignment")
+                err_msg = "Unable to save this assignment. Please check the entered values and try again."
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
                     return JsonResponse({'success': False, 'error': err_msg}, status=400)
                 messages.error(request, err_msg)
@@ -2567,8 +2576,9 @@ def admin_lead_setup(request):
                             setup.save(update_fields=['lead_count', 'updated_at'])
                 messages.success(request, "Lead setup configurations saved successfully.")
                 return redirect('admin_lead_setup')
-            except Exception as e:
-                messages.error(request, f"Error saving assignments: {str(e)}")
+            except Exception:
+                logger.exception("Failed to save lead setup assignments")
+                messages.error(request, "Unable to save these assignments. Please try again.")
                 return redirect('admin_lead_setup')
 
     # Automatically ensure any existing active telecallers with a branch have a setup

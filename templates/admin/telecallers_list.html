@@ -61,7 +61,7 @@
         <tr>
           <th style="width: 60px;">ID</th>
           <th>Telecaller</th>
-          <th>Supervisor Manager</th>
+          <th>Counselor</th>
           <th>Email</th>
           <th>Phone</th>
           <th>Leads</th>
@@ -82,8 +82,8 @@
             <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ t.username }}</div>
           </td>
           <td>
-            {% if t.manager %}
-            <a href="{% url 'admin_manager_detail' t.manager.pk %}"><strong>{{ t.manager.get_full_name|default:t.manager.username }}</strong></a>
+            {% if t.counselor %}
+            <strong>{{ t.counselor.get_full_name|default:t.counselor.username }}</strong>
             {% else %}
             <span style="color: var(--text-muted); font-style: italic;">Unassigned</span>
             {% endif %}
