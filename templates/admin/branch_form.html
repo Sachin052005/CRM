@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Edit Branch - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Edit Branch</h1>
+    <p>Update branch contact or location details</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_branches_list' %}" class="btn btn-secondary">Back to Branches</a>
+  </div>
+</div>
+
+<div style="max-width: 550px;">
+  <div class="crm-card">
+    <div class="crm-card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Branch Name <span class="required">*</span></label>
+          {{ form.name }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          {{ form.phone }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          {{ form.address }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          {{ form.status }}
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <a href="{% url 'admin_branches_list' %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Update Branch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

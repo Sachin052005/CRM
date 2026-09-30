@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Sync History - {{ connection.name }} - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px;">
+  <div class="page-title-group">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+      <a href="{% url 'admin_offline_leads' %}" style="color: var(--text-muted); text-decoration: none; font-size: 0.875rem;">Offline Leads</a>
+      <span style="color: var(--text-muted); font-size: 0.875rem;">/</span>
+      <span style="font-size: 0.875rem; color: var(--text-color);">Google Sheet Sync History</span>
+    </div>
+    <h1 style="display: flex; align-items: center; gap: 10px;">
+      {{ connection.name }}
+      {% if connection.is_active %}
+        <span class="badge" style="background:#d1fae5; color:#065f46; font-size: 0.75rem;">Active</span>
+      {% else %}
+        <span class="badge" style="background:#fee2e2; color:#991b1b; font-size: 0.75rem;">Inactive</span>
+      {% endif %}
+    </h1>
+    <p style="margin-top: 4px;">
+      Worksheet: <strong>{{ connection.worksheet_name|default:"Sheet1" }}</strong> &bull;
+      Branch: <strong>{{ connection.branch.name|default:"Global / All" }}</strong> &bull;
+      Assignment: <strong>{{ connection.get_assignment_method_display }}</strong> &bull;
+      <a href="{{ connection.spreadsheet_url }}" target="_blank" rel="noopener" style="color: var(--primary-color); text-decoration: underline;">Open Google Sheet ↗</a>
+    </p>
+  </div>
+  <div class="page-actions" style="display: flex; gap: 10px;">
+    <a href="{% url 'admin_offline_leads' %}" class="btn btn-secondary">
+      &larr; Back to Offline Leads
+    </a>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <h3>Synchronization Runs</h3>
+    <span style="font-size: 0.85rem; color: var(--text-muted);">Total Runs: {{ histories|length }}</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Status</th>
+          <th>Rows Checked</th>
+          <th>New Leads</th>
+          <th>Updated</th>
+          <th>Skipped</th>
+          <th>Failed</th>
+          <th>Details / Error Summary</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for history in histories %}
+        <tr>
+          <td style="white-space: nowrap; font-size: 0.875rem;">
+            <strong>{{ history.timestamp|date:"M d, Y" }}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ history.timestamp|date:"H:i:s" }}</div>
+          </td>
+          <td>
+            {% if history.status == 'SUCCESS' %}
+              <span class="badge" style="background:#d1fae5; color:#065f46; font-weight:600;">Success</span>
+            {% elif history.status == 'PARTIAL' %}
+              <span class="badge" style="background:#fef3c7; color:#92400e; font-weight:600;">Partial</span>
+            {% elif history.status == 'FAILED' %}
+              <span class="badge" style="background:#fee2e2; color:#991b1b; font-weight:600;">Failed</span>
+            {% else %}
+              <span class="badge">{{ history.status }}</span>
+            {% endif %}
+          </td>
+          <td><strong style="color: var(--text-color);">{{ history.rows_checked }}</strong></td>
+          <td><span style="color: #10b981; font-weight: 600;">+{{ history.new_leads }}</span></td>
+          <td><span style="color: #3b82f6; font-weight: 600;">{{ history.updated_leads }}</span></td>
+          <td><span style="color: var(--text-muted);">{{ history.skipped }}</span></td>
+          <td>
+            {% if history.failed > 0 %}
+              <span style="color: #ef4444; font-weight: 700;">{{ history.failed }}</span>
+            {% else %}
+              <span style="color: var(--text-muted);">0</span>
+            {% endif %}
+          </td>
+          <td style="max-width: 320px; font-size: 0.825rem;">
+            {% if history.error_summary %}
+              <span style="color: #dc2626; word-break: break-word;">{{ history.error_summary }}</span>
+            {% else %}
+              <span style="color: var(--text-muted);">Synced cleanly</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+            No synchronization history recorded yet for this Google Sheet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div style="padding: 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color);">
+    <div>
+      Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </div>
+    <div style="display: flex; gap: 8px;">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-secondary">&laquo; Previous</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="btn btn-sm btn-secondary">Next &raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

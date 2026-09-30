@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}My Calls - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>My Outbound Calls</h1>
+    <p>Personal calling history, recorded outcomes, and conversation notes</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'telecaller_leads_list' %}" class="btn btn-primary">Make Calls from Leads</a>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Lead Name</th>
+          <th>Phone</th>
+          <th>Call Started</th>
+          <th>Duration</th>
+          <th>Outcome</th>
+          <th>Discussion Notes</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in page_obj %}
+        <tr>
+          <td><strong><a href="{% url 'telecaller_lead_detail' c.lead.pk %}">{{ c.lead.name }}</a></strong></td>
+          <td>{{ c.lead.phone }}</td>
+          <td>{{ c.call_started_at|date:"M d, Y H:i" }}</td>
+          <td><strong>{{ c.formatted_duration }}</strong></td>
+          <td><span class="badge badge-telecaller">{{ c.call_outcome }}</span></td>
+          <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {{ c.notes|default:"-" }}
+          </td>
+          <td style="text-align: right;">
+            <button type="button" class="btn btn-success btn-sm" onclick="openCallDialer('{{ c.lead.pk }}', '{{ c.lead.name|escapejs }}', '{{ c.lead.phone|escapejs }}')">
+              Call Again
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <p>You haven't made any calls yet. Go to "My Assigned Leads" and click "Call" to start dialing!</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

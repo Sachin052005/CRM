@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Call Details - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <div class="page-title-group">
+    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Call Details</h1>
+    <p style="color: var(--text-muted); font-size: 0.875rem;">
+      Call record for {% if call.lead %}{{ call.lead.name }}{% else %}Unknown Lead{% endif %} by {% if call.caller %}{{ call.caller.get_full_name|default:call.caller.username }}{% else %}Unknown{% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_calls_list' %}" class="btn btn-secondary">&larr; Back to Calls</a>
+  </div>
+</div>
+
+<div style="max-width: 700px;">
+  <div class="crm-card">
+    <div class="crm-card-body" style="padding: 24px;">
+      <div style="display: grid; grid-template-columns: 160px 1fr; gap: 14px; font-size: 0.95rem;">
+        <span style="color: var(--text-muted);">Lead Name:</span>
+        {% if call.lead %}
+        <a href="{% url 'admin_lead_detail' call.lead.pk %}"><strong>{{ call.lead.name }}</strong></a>
+        {% else %}
+        <span>Unknown Lead</span>
+        {% endif %}
+
+        <span style="color: var(--text-muted);">Phone Number:</span>
+        <span>{% if call.lead %}{{ call.lead.phone }}{% else %}-{% endif %}</span>
+
+        <span style="color: var(--text-muted);">Caller / Agent:</span>
+        <span>
+          {% if call.caller %}
+          <strong>{{ call.caller.get_full_name|default:call.caller.username }} (@{{ call.caller.username }})</strong>
+          {% else %}
+          <strong>Unknown</strong>
+          {% endif %}
+        </span>
+
+        <span style="color: var(--text-muted);">Supervising Manager:</span>
+        <span>{% if call.manager %}{{ call.manager.get_full_name|default:call.manager.username }}{% else %}Unassigned{% endif %}</span>
+
+        <span style="color: var(--text-muted);">Assigned Telecaller:</span>
+        <span>{% if call.telecaller %}{{ call.telecaller.get_full_name|default:call.telecaller.username }}{% else %}Unassigned{% endif %}</span>
+
+        <span style="color: var(--text-muted);">Call Start:</span>
+        <span>{{ call.call_started_at|date:"Y-m-d H:i:s" }}</span>
+
+        <span style="color: var(--text-muted);">Call Ended:</span>
+        <span>{{ call.call_ended_at|date:"Y-m-d H:i:s"|default:"-" }}</span>
+
+        <span style="color: var(--text-muted);">Duration:</span>
+        <strong>{{ call.formatted_duration }} ({{ call.duration }} seconds)</strong>
+
+        <span style="color: var(--text-muted);">Call Outcome:</span>
+        <span class="badge badge-telecaller">{{ call.call_outcome }}</span>
+
+        <span style="color: var(--text-muted);">Call Status:</span>
+        <span class="badge badge-completed">{{ call.call_status }}</span>
+
+        <span style="color: var(--text-muted);">Recording:</span>
+        <div>
+          {% if call.recording_url %}
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <audio controls src="{{ call.recording_url }}" style="height: 32px; max-width: 100%;">
+              Your browser does not support the audio element.
+            </audio>
+            <a href="{{ call.recording_url }}" target="_blank" class="btn btn-secondary btn-sm">[ Play Recording ]</a>
+          </div>
+          {% else %}
+          <span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No recording available</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+        <h4 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">Call Discussion Notes</h4>
+        <div style="background: var(--bg-body); padding: 14px; border-radius: var(--radius-sm); font-size: 0.9rem; white-space: pre-wrap;">
+          {{ call.notes|default:"No discussion notes recorded for this call." }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block title %}Follow-ups - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <div class="page-title-group">
+    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Follow-up Pipeline</h1>
+    <p style="color: var(--text-muted); font-size: 0.875rem;">Monitor scheduled client callbacks, demo sessions, and overdue inquiries</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_followup_create' %}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      + Schedule Follow-up
+    </a>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Today's Due</h4>
+      <div class="kpi-value">{{ today_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap blue">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Pending</h4>
+      <div class="kpi-value">{{ pending_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap amber">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="12 6 12 12 16 14"></polyline></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Overdue</h4>
+      <div class="kpi-value" style="color: var(--danger);">{{ overdue_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap rose">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Completed</h4>
+      <div class="kpi-value">{{ completed_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap green">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-card">
+  <form method="GET" class="filter-form" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+    <div class="filter-col" style="flex: 1 1 180px;">
+      <label>Search</label>
+      <input type="text" name="search" class="form-control" placeholder="Search lead, phone, notes..." value="{{ search_query }}">
+    </div>
+    <div class="filter-col" style="flex: 1 1 140px;">
+      <label>Status Filter</label>
+      <select name="status" class="form-select">
+        <option value="">All Statuses</option>
+        <option value="today" {% if status_filter == 'today' %}selected{% endif %}>Today's Due</option>
+        <option value="overdue" {% if status_filter == 'overdue' %}selected{% endif %}>Overdue</option>
+        <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+        <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Completed</option>
+        <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 140px;">
+      <label>Manager</label>
+      <select name="manager" class="form-select">
+        <option value="">All Managers</option>
+        {% for m in managers %}
+        <option value="{{ m.id }}" {% if manager_filter == m.id|stringformat:"i" %}selected{% endif %}>
+          {% if m %}{{ m.get_full_name|default:m.username }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 140px;">
+      <label>Telecaller</label>
+      <select name="telecaller" class="form-select">
+        <option value="">All Telecallers</option>
+        {% for t in telecallers %}
+        <option value="{{ t.id }}" {% if telecaller_filter == t.id|stringformat:"i" %}selected{% endif %}>
+          {% if t %}{{ t.get_full_name|default:t.username }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>Branch</label>
+      <select name="branch" class="form-select">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if branch_filter == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>Product / Course</label>
+      <select name="product" class="form-select">
+        <option value="">All Products</option>
+        {% for p in products %}
+        <option value="{{ p.id }}" {% if product_filter == p.id|stringformat:"i" %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>Channel / Source</label>
+      <select name="channel" class="form-select">
+        <option value="">All Channels</option>
+        {% for ch in channels %}
+        <option value="{{ ch.id }}" {% if channel_filter == ch.id|stringformat:"i" %}selected{% endif %}>{{ ch.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>From Date</label>
+      <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>To Date</label>
+      <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+    </div>
+    <div style="display: flex; gap: 8px; align-items: flex-end;">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <a href="{% url 'admin_followups_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Table -->
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Lead</th>
+          <th>Supervising Manager</th>
+          <th>Telecaller</th>
+          <th>Due Date</th>
+          <th>Due Time</th>
+          <th>Status</th>
+          <th>Notes</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in page_obj %}
+        <tr>
+          <td>
+            {% if f.lead %}
+            <strong><a href="{% url 'admin_lead_detail' f.lead.pk %}">{{ f.lead.name }}</a></strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ f.lead.phone }}</div>
+            {% else %}
+            <span style="color: var(--text-muted);">Unassigned Lead</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if f.manager %}
+              {{ f.manager.get_full_name|default:f.manager.username }}
+            {% else %}
+              <span style="color: var(--text-muted); font-style: italic;">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if f.telecaller %}
+              {{ f.telecaller.get_full_name|default:f.telecaller.username }}
+            {% else %}
+              <span style="color: var(--text-muted); font-style: italic;">Unassigned</span>
+            {% endif %}
+          </td>
+          <td><strong>{{ f.follow_up_date }}</strong></td>
+          <td>{{ f.follow_up_time|default:"Anytime" }}</td>
+          <td>
+            {% if f.is_overdue %}
+            <span class="badge badge-overdue">Overdue</span>
+            {% elif f.status == 'Pending' %}
+            <span class="badge badge-pending">Pending</span>
+            {% elif f.status == 'Completed' %}
+            <span class="badge badge-completed">Completed</span>
+            {% elif f.status == 'Cancelled' %}
+            <span class="badge badge-cancelled" style="background: #f1f5f9; color: #64748b;">Cancelled</span>
+            {% else %}
+            <span class="badge">{{ f.status }}</span>
+            {% endif %}
+          </td>
+          <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {{ f.notes|default:"-" }}
+          </td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 4px; align-items: center;">
+              {% if f.lead %}
+              <button type="button" class="btn btn-success btn-sm" onclick="openCallDialer('{{ f.lead.pk }}', '{{ f.lead.name|escapejs }}', '{{ f.lead.phone|escapejs }}')" title="Call Now">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              </button>
+              {% endif %}
+              <a href="{% url 'admin_followup_edit' f.pk %}" class="btn btn-secondary btn-sm" title="Edit">Edit</a>
+              <a href="{% url 'admin_followup_reschedule' f.pk %}" class="btn btn-secondary btn-sm" title="Reschedule">Reschedule</a>
+              {% if f.status != 'Completed' %}
+              <a href="{% url 'update_followup_status' f.pk 'Completed' %}" class="btn btn-secondary btn-sm" title="Mark Done">Complete</a>
+              <a href="{% url 'update_followup_status' f.pk 'Cancelled' %}" class="btn btn-secondary btn-sm" data-confirm="Cancel this follow-up?">Cancel</a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8">
+            <div class="empty-state">
+              <p>No follow-ups matching this query.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid var(--border-color); font-size: 0.85rem;">
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    <div style="display: flex; gap: 6px;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if extra_params %}&{{ extra_params }}{% endif %}" class="btn btn-secondary btn-sm">&laquo; Prev</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if extra_params %}&{{ extra_params }}{% endif %}" class="btn btn-secondary btn-sm">Next &raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Team Calls - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Team Call History</h1>
+    <p>Calls logged by you and your supervised telecaller agents</p>
+  </div>
+</div>
+
+<div class="filter-card">
+  <form method="GET" class="filter-form">
+    <div class="filter-col">
+      <label>Telecaller</label>
+      <select name="telecaller" class="form-select">
+        <option value="">All Telecallers</option>
+        {% for t in telecallers %}
+        <option value="{{ t.id }}" {% if telecaller_filter == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col">
+      <label>Outcome</label>
+      <select name="outcome" class="form-select">
+        <option value="">All Outcomes</option>
+        {% for code, label in outcomes %}
+        <option value="{{ code }}" {% if outcome_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <a href="{% url 'manager_calls_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Lead</th>
+          <th>Caller Agent</th>
+          <th>Start Time</th>
+          <th>Duration</th>
+          <th>Outcome</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in page_obj %}
+        <tr>
+          <td>
+            <strong><a href="{% url 'manager_lead_detail' c.lead.pk %}">{{ c.lead.name }}</a></strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ c.lead.phone }}</div>
+          </td>
+          <td>{% if c.caller %}{{ c.caller.get_full_name|default:c.caller.username }}{% else %}Unknown{% endif %}</td>
+          <td>{{ c.call_started_at|date:"M d, Y H:i" }}</td>
+          <td><strong>{{ c.formatted_duration }}</strong></td>
+          <td><span class="badge badge-telecaller">{{ c.call_outcome }}</span></td>
+          <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {{ c.notes|default:"-" }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <p>No team call activity recorded yet.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

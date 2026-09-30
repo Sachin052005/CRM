@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Channels - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Lead Channels</h1>
+    <p>Manage inquiry sources and channels for marketing attribution</p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+  <!-- Channels Table -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Active & Inactive Channels</h3>
+      <form method="GET" style="display: flex; gap: 8px;">
+        <input type="text" name="search" class="form-control" style="width: 180px; padding: 4px 10px; font-size: 0.8rem;" placeholder="Search channels..." value="{{ search_query }}">
+        <select name="status" class="form-select" style="width: 110px; padding: 4px 8px; font-size: 0.8rem;" onchange="this.form.submit()">
+          <option value="">All</option>
+          <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>Active</option>
+          <option value="Inactive" {% if status_filter == 'Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+      </form>
+    </div>
+
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Channel Name</th>
+            <th>Total Leads</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ch in page_obj %}
+          <tr>
+            <td><strong>{{ ch.name }}</strong></td>
+            <td><span class="badge badge-telecaller">{{ ch.lead_count }} leads</span></td>
+            <td>
+              {% if ch.status == 'Active' %}
+              <span class="badge badge-active">Active</span>
+              {% else %}
+              <span class="badge badge-inactive">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ ch.created_at|date:"M d, Y" }}</td>
+            <td style="text-align: right;">
+              <a href="{% url 'admin_channel_edit' ch.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'admin_channel_toggle_status' ch.pk %}" class="btn btn-sm {% if ch.status == 'Active' %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change the status of this channel?">
+                {% if ch.status == 'Active' %}Deactivate{% else %}Activate{% endif %}
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                </div>
+                <h4>No Channels Found</h4>
+                <p>Create your first lead acquisition channel using the form on the right.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Channel Card -->
+  <div class="crm-card" style="height: fit-content;">
+    <div class="crm-card-header">
+      <h3>Add New Channel</h3>
+    </div>
+    <div class="crm-card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <div class="form-group">
+          <label class="form-label">Channel Name <span class="required">*</span></label>
+          {{ form.name }}
+          <span class="form-text">e.g. Website, Facebook Ads, Walk-in, WhatsApp</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Initial Status</label>
+          {{ form.status }}
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Create Channel</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

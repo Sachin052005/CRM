@@ -1,0 +1,970 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Meta / Facebook Connection - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<!-- BREADCRUMB NAVIGATION -->
+<div style="margin-bottom: 16px; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
+  <a href="{% url 'admin_configuration' %}" style="color: var(--text-muted); text-decoration: none;">Configuration</a>
+  <span>/</span>
+  <a href="{% url 'admin_configuration' %}" style="color: var(--text-muted); text-decoration: none;">Meta / Facebook</a>
+  <span>/</span>
+  <span style="color: var(--text-main); font-weight: 600;">Manage</span>
+</div>
+
+<!-- PAGE HEADER -->
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+  <div class="page-title-group">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+      <div style="width: 40px; height: 40px; border-radius: 10px; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+        </svg>
+      </div>
+      <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">
+        MANAGE META / FACEBOOK CONNECTION
+      </h1>
+    </div>
+    <p style="color: var(--text-muted); font-size: 0.925rem; margin: 0; max-width: 720px;">
+      Configure and verify the Meta connection for real-time lead fetching.
+    </p>
+  </div>
+  <div class="page-actions" style="display: flex; align-items: center; gap: 10px;">
+    <a href="{% url 'admin_configuration' %}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 16px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      Back to Configuration
+    </a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TOP BANNER: ACTIVE / INACTIVE CONNECTION STATE BOX            -->
+<!-- ============================================================ -->
+<div id="connectionStateBanner" style="margin-bottom: 28px;">
+  <!-- SUCCESSFUL CONNECTION STATE -->
+  <div id="activeStateBox" class="crm-card" style="padding: 24px; text-align: center; border-radius: var(--radius-md); background: #f0fdf4; border: 2px solid #86efac; {% if not realtime_active %}display: none;{% endif %}">
+    <div style="border-top: 1px solid #bbf7d0; border-bottom: 1px solid #bbf7d0; padding: 14px 0; margin-bottom: 14px;">
+      <span style="font-size: 1.3rem; font-weight: 800; color: #15803d; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 8px;">
+        🟢 REAL-TIME CONNECTION ACTIVE
+      </span>
+    </div>
+    <p style="color: #166534; font-size: 0.95rem; margin-bottom: 18px; font-weight: 500;">
+      New Meta leads will be received and imported into the CRM automatically.
+    </p>
+    <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+      <button type="button" class="btn btn-primary" onclick="saveConnection()" style="font-weight: 600; padding: 8px 22px;">
+        Save Connection
+      </button>
+      <button type="button" class="btn btn-secondary" id="btnSyncNow" onclick="syncNow()" style="font-weight: 600; padding: 8px 20px; display: inline-flex; align-items: center; gap: 7px;">
+        <svg id="syncIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        <span id="syncText">Sync Now</span>
+      </button>
+      <button type="button" class="btn btn-secondary" onclick="disconnectMeta()" style="font-weight: 600; padding: 8px 20px; color: #dc2626;">
+        Disconnect
+      </button>
+    </div>
+  </div>
+
+  <!-- INITIAL / NOT CONNECTED STATE -->
+  <div id="inactiveStateBox" class="crm-card" style="padding: 24px; text-align: center; border-radius: var(--radius-md); background: #f8fafc; border: 2px solid #cbd5e1; {% if realtime_active %}display: none;{% endif %}">
+    <div style="border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; padding: 14px 0; margin-bottom: 14px;">
+      <span style="font-size: 1.3rem; font-weight: 800; color: #475569; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 8px;">
+        ⚪ REAL-TIME CONNECTION NOT ACTIVE
+      </span>
+    </div>
+    <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 18px; font-weight: 500;">
+      Complete the connection details and run all required tests before activating real-time lead fetching.
+    </p>
+    <div style="display: flex; justify-content: center; gap: 12px;">
+      <button type="button" class="btn btn-primary" id="btnTestConnectionMain" onclick="runFullConnectionTest()" style="font-weight: 600; padding: 10px 26px; display: inline-flex; align-items: center; gap: 8px;">
+        <svg id="testIconMain" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <span>Test Connection</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MAIN TWO-COLUMN CONTENT GRID                                  -->
+<!-- ============================================================ -->
+<div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: flex-start;">
+
+  <!-- LEFT COLUMN: CONFIGURATION CARDS -->
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+
+    <!-- 1. META APP CREDENTIALS CARD -->
+    <div class="crm-card" style="padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: var(--shadow-sm);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 24px; height: 24px; border-radius: 50%; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700;">1</span>
+          <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0;">Meta App Credentials</h2>
+        </div>
+        <div id="badgeContainerAppCreds">
+          <span class="badge" id="badgeAppCreds" style="{% if app_credentials_valid %}background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;{% else %}background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;{% endif %} font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 9999px;">
+            {% if app_credentials_valid %}🟢 Valid{% else %}⚪ Not Verified{% endif %}
+          </span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- Meta App ID -->
+        <div>
+          <label style="display: block; font-size: 0.825rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
+            Meta App ID <span style="color: #ef4444;">*</span>
+          </label>
+          <input type="text" id="metaAppId" name="app_id" value="{{ app_id }}" placeholder="Enter Meta App ID" class="form-control" style="width: 100%; padding: 9px 12px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: monospace;">
+        </div>
+
+        <!-- Meta App Secret -->
+        <div>
+          <label style="display: block; font-size: 0.825rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
+            Meta App Secret <span style="color: #ef4444;">*</span>
+            <span style="font-weight: 400; color: var(--text-muted); font-size: 0.775rem; margin-left: 6px;">(The secret must remain protected)</span>
+          </label>
+          <div style="position: relative;">
+            <input type="password" id="metaAppSecret" name="app_secret" value="{{ app_secret }}" placeholder="Enter Meta App Secret" class="form-control" style="width: 100%; padding: 9px 40px 9px 12px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: monospace;">
+            <button type="button" onclick="togglePasswordVisibility('metaAppSecret', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; padding: 2px;" title="Show/Hide Secret">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Test App Credentials Button -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; flex-wrap: wrap; gap: 8px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnTestAppCreds" onclick="testAppCredentials()" style="font-weight: 600; padding: 7px 16px;">
+            Test App Credentials
+          </button>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Validates App ID & App Secret against Meta Graph API.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. PAGE AUTHORIZATION & FACEBOOK PAGE CARD -->
+    <div class="crm-card" style="padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: var(--shadow-sm);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 24px; height: 24px; border-radius: 50%; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700;">2</span>
+          <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0;">Page Authorization</h2>
+        </div>
+        <div id="badgeContainerPageAuth">
+          <span class="badge" id="badgePageAuth" style="{% if page_auth_valid %}background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;{% else %}background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;{% endif %} font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 9999px;">
+            {% if page_auth_valid %}🟢 Valid{% else %}⚪ Not Connected{% endif %}
+          </span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- Page Access Token -->
+        <div>
+          <label style="display: block; font-size: 0.825rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
+            Page Access Token <span style="color: #ef4444;">*</span>
+          </label>
+          <div style="position: relative;">
+            <input type="password" id="metaPageToken" name="page_access_token" value="{{ page_access_token }}" placeholder="Enter Page Access Token" class="form-control" style="width: 100%; padding: 9px 40px 9px 12px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: monospace;">
+            <button type="button" onclick="togglePasswordVisibility('metaPageToken', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; padding: 2px;" title="Show/Hide Token">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnValidatePageAuth" onclick="validatePageAuth()" style="font-weight: 600; padding: 7px 16px;">
+            Validate Page Authorization
+          </button>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Confirms token privileges & page management scope.</span>
+        </div>
+
+        <hr style="margin: 4px 0; border: none; border-top: 1px solid var(--border-color);">
+
+        <!-- Facebook Page Selection -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 0.825rem; font-weight: 600; color: var(--text-main); margin: 0;">
+              Facebook Page <span style="color: #ef4444;">*</span>
+            </label>
+            <span class="badge" id="badgeFbPage" style="{% if page_connected %}background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;{% else %}background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;{% endif %} font-weight: 600; font-size: 0.75rem; padding: 2px 8px; border-radius: 9999px;">
+              {% if page_connected %}🟢 Connected{% else %}⚪ Not Connected{% endif %}
+            </span>
+          </div>
+
+          <select id="metaPageSelect" onchange="onPageSelected()" class="form-select" style="width: 100%; padding: 9px 12px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <option value="">-- Select Facebook Page --</option>
+            {% for p in available_pages %}
+            <option value="{{ p.name }}" {% if selected_page == p.name or conn.page_name == p.name %}selected{% endif %}>
+              {{ p.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. LEAD FORM & PERMISSIONS CARD -->
+    <div class="crm-card" style="padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: var(--shadow-sm);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 24px; height: 24px; border-radius: 50%; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700;">3</span>
+          <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0;">Lead Form</h2>
+        </div>
+        <div id="badgeContainerLeadForm">
+          <span class="badge" id="badgeLeadForm" style="{% if form_connected %}background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;{% else %}background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;{% endif %} font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 9999px;">
+            {% if form_connected %}🟢 Connected{% else %}⚪ Not Selected{% endif %}
+          </span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">
+          The Admin must select the Lead Form that should provide leads to the CRM.
+        </p>
+
+        <!-- Lead Form Dropdown -->
+        <div>
+          <label style="display: block; font-size: 0.825rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
+            Select Lead Form <span style="color: #ef4444;">*</span>
+          </label>
+          <select id="metaFormSelect" onchange="onFormSelected()" class="form-select" style="width: 100%; padding: 9px 12px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <option value="">-- Select Lead Form --</option>
+            {% for f in available_forms %}
+            <option value="{{ f.name }}" {% if selected_form == f.name %}selected{% endif %}>
+              {{ f.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <hr style="margin: 4px 0; border: none; border-top: 1px solid var(--border-color);">
+
+        <!-- Lead Ads Permissions Indicator Box -->
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div style="font-weight: 700; font-size: 0.875rem; color: var(--text-main); margin-bottom: 2px;">
+              Lead Ads Permissions
+            </div>
+            <div style="font-size: 0.775rem; color: var(--text-muted); max-width: 380px;">
+              The connection must not become active unless the required Lead Ads permissions are successfully validated.
+            </div>
+          </div>
+          <span class="badge" id="badgeLeadAdsPerms" style="{% if lead_ads_permissions_valid %}background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;{% else %}background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;{% endif %} font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 9999px;">
+            {% if lead_ads_permissions_valid %}🟢 Valid{% else %}⚪ Not Verified{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. REAL-TIME WEBHOOK CARD -->
+    <div class="crm-card" style="padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: var(--shadow-sm);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="width: 24px; height: 24px; border-radius: 50%; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700;">4</span>
+          <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0;">Real-Time Webhook</h2>
+        </div>
+        <div id="badgeContainerWebhook">
+          <span class="badge" id="badgeWebhook" style="{% if webhook_verified %}background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;{% else %}background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;{% endif %} font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 9999px;">
+            {% if webhook_verified %}🟢 Verified{% else %}⚪ Not Verified{% endif %}
+          </span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- Webhook URL Field -->
+        <div>
+          <label style="display: block; font-size: 0.825rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
+            Webhook URL
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="metaWebhookUrl" value="{{ webhook_url }}" class="form-control" style="flex: 1; padding: 9px 12px; font-size: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: monospace;" readonly>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="copyWebhookUrl()" style="flex-shrink: 0; padding: 8px 14px; font-weight: 600;">
+              Copy
+            </button>
+          </div>
+        </div>
+
+        <!-- Verify Token Field -->
+        <div>
+          <label style="display: block; font-size: 0.825rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
+            Webhook Verify Token
+          </label>
+          <input type="text" id="metaVerifyToken" value="{{ verify_token }}" class="form-control" style="width: 100%; padding: 8px 12px; font-size: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: monospace;" readonly>
+        </div>
+
+        <!-- Verify Webhook Button -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnVerifyWebhook" onclick="verifyWebhook()" style="font-weight: 600; padding: 7px 16px;">
+            Verify Webhook
+          </button>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Confirms endpoint reachability & challenge response.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN: CONNECTION TEST & VERIFICATION MATRIX -->
+  <div style="display: flex; flex-direction: column; gap: 20px; position: sticky; top: 20px;">
+
+    <!-- CONNECTION TEST CARD -->
+    <div class="crm-card" style="padding: 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: var(--shadow-sm);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+        <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0; letter-spacing: 0.02em;">
+          CONNECTION TEST
+        </h2>
+        <span style="font-size: 0.775rem; font-weight: 600; color: var(--text-muted);">8 Checks Required</span>
+      </div>
+
+      <p style="font-size: 0.825rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;">
+        The CRM should verify the required connection components before allowing the real-time connection to become active.
+      </p>
+
+      <!-- VERIFICATION RESULTS TABLE -->
+      <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 18px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+          <tbody>
+            <!-- 1. Meta App Credentials -->
+            <tr style="border-bottom: 1px solid #edf2f7;">
+              <td style="padding: 8px 0; color: var(--text-main); font-weight: 500;">Meta App Credentials</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;" id="statusRowAppCreds">
+                {% if app_credentials_valid %}🟢 Valid{% else %}⚪ Not Verified{% endif %}
+              </td>
+            </tr>
+
+            <!-- 2. Page Authorization -->
+            <tr style="border-bottom: 1px solid #edf2f7;">
+              <td style="padding: 8px 0; color: var(--text-main); font-weight: 500;">Page Authorization</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;" id="statusRowPageAuth">
+                {% if page_auth_valid %}🟢 Valid{% else %}⚪ Not Connected{% endif %}
+              </td>
+            </tr>
+
+            <!-- 3. Lead Ads Permissions -->
+            <tr style="border-bottom: 1px solid #edf2f7;">
+              <td style="padding: 8px 0; color: var(--text-main); font-weight: 500;">Lead Ads Permissions</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;" id="statusRowLeadAdsPerms">
+                {% if lead_ads_permissions_valid %}🟢 Valid{% else %}⚪ Not Verified{% endif %}
+              </td>
+            </tr>
+
+            <!-- 4. Facebook Page -->
+            <tr style="border-bottom: 1px solid #edf2f7;">
+              <td style="padding: 8px 0; color: var(--text-main); font-weight: 500;">Facebook Page</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;" id="statusRowFbPage">
+                {% if page_connected %}🟢 Connected{% else %}⚪ Not Connected{% endif %}
+              </td>
+            </tr>
+
+            <!-- 5. Lead Form -->
+            <tr style="border-bottom: 1px solid #edf2f7;">
+              <td style="padding: 8px 0; color: var(--text-main); font-weight: 500;">Lead Form</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;" id="statusRowLeadForm">
+                {% if form_connected %}🟢 Connected{% else %}⚪ Not Selected{% endif %}
+              </td>
+            </tr>
+
+            <!-- 6. Webhook -->
+            <tr style="border-bottom: 1px solid #edf2f7;">
+              <td style="padding: 8px 0; color: var(--text-main); font-weight: 500;">Webhook</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;" id="statusRowWebhook">
+                {% if webhook_verified %}🟢 Verified{% else %}⚪ Not Verified{% endif %}
+              </td>
+            </tr>
+
+            <!-- 7. Meta API Test -->
+            <tr style="border-bottom: 1px solid #edf2f7;">
+              <td style="padding: 8px 0; color: var(--text-main); font-weight: 500;">Meta API Test</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;" id="statusRowMetaApi">
+                {% if meta_api_tested %}🟢 Successful{% else %}⚪ Not Tested{% endif %}
+              </td>
+            </tr>
+
+            <!-- 8. Lead Event Test -->
+            <tr>
+              <td style="padding: 8px 0; color: var(--text-main); font-weight: 500;">Lead Event Test</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;" id="statusRowLeadEvent">
+                {% if lead_event_tested %}🟢 Successful{% else %}⚪ Not Tested{% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Test Connection Button -->
+      <div style="margin-bottom: 18px;">
+        <button type="button" class="btn btn-primary" id="btnTestConnectionSidebar" onclick="runFullConnectionTest()" style="width: 100%; padding: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg id="testIconSidebar" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span id="testSidebarText">Test Connection</span>
+        </button>
+      </div>
+
+      <!-- ACTIVATION RULE EXPLANATION -->
+      <div style="border-top: 1px solid var(--border-color); padding-top: 14px; font-size: 0.775rem; color: var(--text-muted); line-height: 1.5;">
+        <div style="font-weight: 700; color: #475569; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em;">
+          Connection Activation Rule:
+        </div>
+        <div>
+          The connection becomes active <strong>only</strong> after all 8 components are validated. If any required component fails, the connection remains inactive.
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTION PIPELINE FLOW -->
+    <div class="crm-card" style="padding: 18px 22px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); font-size: 0.8rem;">
+      <div style="font-weight: 700; color: var(--text-main); margin-bottom: 12px; letter-spacing: 0.01em;">
+        REAL-TIME LEAD PIPELINE FLOW
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; font-family: monospace; font-size: 0.775rem; color: #475569;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #6366f1;">●</span> Meta App Credentials
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #6366f1;">●</span> Page Authorization
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #6366f1;">●</span> Lead Ads Permissions
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #6366f1;">●</span> Facebook Page
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #6366f1;">●</span> Lead Form
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #6366f1;">●</span> Webhook Verification
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #6366f1;">●</span> Meta API Test
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #6366f1;">●</span> Lead Event Test
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="font-weight: 700; color: #15803d; background: #dcfce7; padding: 4px 8px; border-radius: 4px;">
+          🟢 REAL-TIME CONNECTION ACTIVE
+        </div>
+        <div style="padding-left: 12px; color: #94a3b8;">↓</div>
+        <div style="color: #0369a1;">
+          CRM receives & imports leads automatically
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- FLOATING TOAST NOTIFICATION                                  -->
+<!-- ============================================================ -->
+<div id="statusToast" style="display: none; position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #fff; padding: 14px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 2000; font-size: 0.875rem; align-items: center; gap: 12px; border-left: 4px solid #10b981; min-width: 280px; max-width: 440px; animation: slideIn 0.3s ease;">
+  <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+    <span id="toastDot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; flex-shrink: 0;"></span>
+    <span id="toastMsg" style="flex: 1; line-height: 1.4;">Notification</span>
+    <button type="button" onclick="document.getElementById('statusToast').style.display='none'" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; line-height: 1;">&times;</button>
+  </div>
+</div>
+
+<style>
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spinning {
+  animation: spin 1s linear infinite;
+}
+</style>
+
+<!-- ============================================================ -->
+<!-- INTERACTIVE JAVASCRIPT LOGIC                                 -->
+<!-- ============================================================ -->
+<script>
+const CONN_ID = {{ conn.id }};
+const TEST_STEP_URL = "{% url 'admin_meta_test_step' conn.id %}";
+const SAVE_CONFIG_URL = "{% url 'admin_meta_save_config' conn.id %}";
+const SYNC_NOW_URL = "{% url 'admin_meta_sync_now' conn.id %}";
+const DISCONNECT_URL = "{% url 'admin_meta_disconnect' conn.id %}";
+
+// Helper: CSRF Cookie
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Toast Notification
+let toastTimer = null;
+function showToast(message, isError = false) {
+  const toast = document.getElementById('statusToast');
+  const txt = document.getElementById('toastMsg');
+  const dot = document.getElementById('toastDot');
+  if (toast && txt) {
+    txt.textContent = message;
+    toast.style.borderLeftColor = isError ? '#ef4444' : '#10b981';
+    if (dot) dot.style.background = isError ? '#ef4444' : '#10b981';
+    toast.style.display = 'flex';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.style.display = 'none';
+    }, 4500);
+  }
+}
+
+// Password toggle
+function togglePasswordVisibility(fieldId, btn) {
+  const input = document.getElementById(fieldId);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.style.color = '#2563eb';
+  } else {
+    input.type = 'password';
+    btn.style.color = '#64748b';
+  }
+}
+
+// Copy Webhook URL
+function copyWebhookUrl() {
+  const input = document.getElementById('metaWebhookUrl');
+  if (!input || !input.value) return;
+  navigator.clipboard.writeText(input.value).then(() => {
+    showToast('Webhook URL copied to clipboard!');
+  }).catch(() => {
+    showToast('Failed to copy webhook URL.', true);
+  });
+}
+
+// Update Badge UI helper
+function setBadge(elemId, statusText, isPositive) {
+  const el = document.getElementById(elemId);
+  if (!el) return;
+  el.textContent = statusText;
+  if (isPositive) {
+    el.style.background = '#dcfce7';
+    el.style.color = '#15803d';
+    el.style.borderColor = '#bbf7d0';
+  } else {
+    el.style.background = '#f1f5f9';
+    el.style.color = '#64748b';
+    el.style.borderColor = '#e2e8f0';
+  }
+}
+
+// Set Active / Inactive Banners
+function setConnectionActive(isActive) {
+  const activeBox = document.getElementById('activeStateBox');
+  const inactiveBox = document.getElementById('inactiveStateBox');
+  if (isActive) {
+    activeBox.style.display = 'block';
+    inactiveBox.style.display = 'none';
+  } else {
+    activeBox.style.display = 'none';
+    inactiveBox.style.display = 'block';
+  }
+}
+
+// 1. TEST APP CREDENTIALS
+function testAppCredentials() {
+  const appId = document.getElementById('metaAppId').value.trim();
+  const appSecret = document.getElementById('metaAppSecret').value.trim();
+  const btn = document.getElementById('btnTestAppCreds');
+
+  if (!appId || !appSecret) {
+    showToast('Please enter both Meta App ID and Meta App Secret.', true);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Testing...';
+
+  const formData = new FormData();
+  formData.append('action', 'test_app_credentials');
+  formData.append('app_id', appId);
+  formData.append('app_secret', appSecret);
+
+  fetch(TEST_STEP_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.textContent = 'Test App Credentials';
+    if (data.success) {
+      setBadge('badgeAppCreds', '🟢 Valid', true);
+      document.getElementById('statusRowAppCreds').innerHTML = '🟢 Valid';
+      showToast(data.message);
+    } else {
+      setBadge('badgeAppCreds', '🔴 Invalid', false);
+      document.getElementById('statusRowAppCreds').innerHTML = '🔴 Invalid';
+      showToast(data.message, true);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.textContent = 'Test App Credentials';
+    showToast('Failed to validate App Credentials.', true);
+  });
+}
+
+// 2. VALIDATE PAGE AUTHORIZATION
+function validatePageAuth() {
+  const token = document.getElementById('metaPageToken').value.trim();
+  const btn = document.getElementById('btnValidatePageAuth');
+
+  if (!token) {
+    showToast('Please enter the Page Access Token.', true);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Validating...';
+
+  const formData = new FormData();
+  formData.append('action', 'validate_page_auth');
+  formData.append('page_access_token', token);
+
+  fetch(TEST_STEP_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.textContent = 'Validate Page Authorization';
+    if (data.success) {
+      setBadge('badgePageAuth', '🟢 Valid', true);
+      setBadge('badgeLeadAdsPerms', '🟢 Valid', true);
+      document.getElementById('statusRowPageAuth').innerHTML = '🟢 Valid';
+      document.getElementById('statusRowLeadAdsPerms').innerHTML = '🟢 Valid';
+      showToast(data.message);
+    } else {
+      setBadge('badgePageAuth', '🔴 Invalid', false);
+      setBadge('badgeLeadAdsPerms', '⚪ Not Verified', false);
+      document.getElementById('statusRowPageAuth').innerHTML = '🔴 Invalid';
+      document.getElementById('statusRowLeadAdsPerms').innerHTML = '⚪ Not Verified';
+      showToast(data.message, true);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.textContent = 'Validate Page Authorization';
+    showToast('Failed to validate Page Authorization.', true);
+  });
+}
+
+// 3. SELECT FACEBOOK PAGE
+function onPageSelected() {
+  const pageSelect = document.getElementById('metaPageSelect');
+  const pageName = pageSelect.value.trim();
+
+  if (!pageName) {
+    setBadge('badgeFbPage', '⚪ Not Connected', false);
+    document.getElementById('statusRowFbPage').innerHTML = '⚪ Not Connected';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('action', 'select_page');
+  formData.append('page_name', pageName);
+
+  fetch(TEST_STEP_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      setBadge('badgeFbPage', '🟢 Connected', true);
+      document.getElementById('statusRowFbPage').innerHTML = '🟢 Connected';
+      showToast(data.message);
+    } else {
+      setBadge('badgeFbPage', '⚪ Not Connected', false);
+      document.getElementById('statusRowFbPage').innerHTML = '⚪ Not Connected';
+      showToast(data.message, true);
+    }
+  })
+  .catch(() => {
+    showToast('Failed to save page selection.', true);
+  });
+}
+
+// 4. SELECT LEAD FORM
+function onFormSelected() {
+  const formSelect = document.getElementById('metaFormSelect');
+  const formName = formSelect.value.trim();
+
+  if (!formName) {
+    setBadge('badgeLeadForm', '⚪ Not Selected', false);
+    document.getElementById('statusRowLeadForm').innerHTML = '⚪ Not Selected';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('action', 'select_form');
+  formData.append('form_name', formName);
+
+  fetch(TEST_STEP_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      setBadge('badgeLeadForm', '🟢 Connected', true);
+      document.getElementById('statusRowLeadForm').innerHTML = '🟢 Connected';
+      showToast(data.message);
+    } else {
+      setBadge('badgeLeadForm', '⚪ Not Selected', false);
+      document.getElementById('statusRowLeadForm').innerHTML = '⚪ Not Selected';
+      showToast(data.message, true);
+    }
+  })
+  .catch(() => {
+    showToast('Failed to save lead form selection.', true);
+  });
+}
+
+// 5. VERIFY WEBHOOK
+function verifyWebhook() {
+  const btn = document.getElementById('btnVerifyWebhook');
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+
+  const formData = new FormData();
+  formData.append('action', 'verify_webhook');
+
+  fetch(TEST_STEP_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.textContent = 'Verify Webhook';
+    if (data.success) {
+      setBadge('badgeWebhook', '🟢 Verified', true);
+      document.getElementById('statusRowWebhook').innerHTML = '🟢 Verified';
+      showToast(data.message);
+    } else {
+      setBadge('badgeWebhook', '⚪ Not Verified', false);
+      document.getElementById('statusRowWebhook').innerHTML = '⚪ Not Verified';
+      showToast(data.message, true);
+    }
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.textContent = 'Verify Webhook';
+    showToast('Failed to verify webhook.', true);
+  });
+}
+
+// 6. RUN FULL CONNECTION TEST (Strict Activation Rule)
+function runFullConnectionTest() {
+  const btnMain = document.getElementById('btnTestConnectionMain');
+  const btnSidebar = document.getElementById('btnTestConnectionSidebar');
+  const iconMain = document.getElementById('testIconMain');
+  const iconSidebar = document.getElementById('testIconSidebar');
+
+  if (btnMain) btnMain.disabled = true;
+  if (btnSidebar) btnSidebar.disabled = true;
+  if (iconMain) iconMain.classList.add('spinning');
+  if (iconSidebar) iconSidebar.classList.add('spinning');
+
+  const formData = new FormData();
+  formData.append('action', 'test_connection');
+  formData.append('app_id', document.getElementById('metaAppId').value.trim());
+  formData.append('app_secret', document.getElementById('metaAppSecret').value.trim());
+  formData.append('page_access_token', document.getElementById('metaPageToken').value.trim());
+  formData.append('page_name', document.getElementById('metaPageSelect').value.trim());
+  formData.append('form_name', document.getElementById('metaFormSelect').value.trim());
+  formData.append('webhook_url', document.getElementById('metaWebhookUrl').value.trim());
+
+  fetch(TEST_STEP_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (btnMain) btnMain.disabled = false;
+    if (btnSidebar) btnSidebar.disabled = false;
+    if (iconMain) iconMain.classList.remove('spinning');
+    if (iconSidebar) iconSidebar.classList.remove('spinning');
+
+    // Update statuses table
+    if (data.statuses) {
+      document.getElementById('statusRowAppCreds').innerHTML = data.statuses.app_credentials;
+      document.getElementById('statusRowPageAuth').innerHTML = data.statuses.page_auth;
+      document.getElementById('statusRowLeadAdsPerms').innerHTML = data.statuses.lead_ads_permissions;
+      document.getElementById('statusRowFbPage').innerHTML = data.statuses.facebook_page;
+      document.getElementById('statusRowLeadForm').innerHTML = data.statuses.lead_form;
+      document.getElementById('statusRowWebhook').innerHTML = data.statuses.webhook;
+      document.getElementById('statusRowMetaApi').innerHTML = data.statuses.meta_api_test;
+      document.getElementById('statusRowLeadEvent').innerHTML = data.statuses.lead_event_test;
+
+      // Also update badges
+      setBadge('badgeAppCreds', data.statuses.app_credentials, data.statuses.app_credentials.includes('🟢'));
+      setBadge('badgePageAuth', data.statuses.page_auth, data.statuses.page_auth.includes('🟢'));
+      setBadge('badgeLeadAdsPerms', data.statuses.lead_ads_permissions, data.statuses.lead_ads_permissions.includes('🟢'));
+      setBadge('badgeFbPage', data.statuses.facebook_page, data.statuses.facebook_page.includes('🟢'));
+      setBadge('badgeLeadForm', data.statuses.lead_form, data.statuses.lead_form.includes('🟢'));
+      setBadge('badgeWebhook', data.statuses.webhook, data.statuses.webhook.includes('🟢'));
+    }
+
+    if (data.success && data.realtime_active) {
+      setConnectionActive(true);
+      showToast(data.message);
+    } else {
+      setConnectionActive(false);
+      showToast(data.message, true);
+    }
+  })
+  .catch(err => {
+    if (btnMain) btnMain.disabled = false;
+    if (btnSidebar) btnSidebar.disabled = false;
+    if (iconMain) iconMain.classList.remove('spinning');
+    if (iconSidebar) iconSidebar.classList.remove('spinning');
+    showToast('Failed to complete connection test.', true);
+  });
+}
+
+// 7. SAVE CONNECTION
+function saveConnection() {
+  const formData = new FormData();
+  formData.append('app_id', document.getElementById('metaAppId').value.trim());
+  formData.append('app_secret', document.getElementById('metaAppSecret').value.trim());
+  formData.append('page_access_token', document.getElementById('metaPageToken').value.trim());
+  formData.append('page_name', document.getElementById('metaPageSelect').value.trim());
+  formData.append('form_name', document.getElementById('metaFormSelect').value.trim());
+  formData.append('webhook_url', document.getElementById('metaWebhookUrl').value.trim());
+
+  fetch(SAVE_CONFIG_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast(data.message);
+      if (data.realtime_active) {
+        setConnectionActive(true);
+      }
+    } else {
+      showToast(data.message || 'Error saving settings.', true);
+    }
+  })
+  .catch(() => {
+    showToast('Failed to save connection.', true);
+  });
+}
+
+// 8. SYNC NOW
+function syncNow() {
+  const btn = document.getElementById('btnSyncNow');
+  const icon = document.getElementById('syncIcon');
+  const txt = document.getElementById('syncText');
+
+  btn.disabled = true;
+  if (icon) icon.classList.add('spinning');
+  if (txt) txt.textContent = 'Syncing...';
+
+  fetch(SYNC_NOW_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    if (icon) icon.classList.remove('spinning');
+    if (txt) txt.textContent = 'Sync Now';
+    if (data.success) {
+      showToast(data.message);
+    } else {
+      showToast(data.error || 'Failed to sync.', true);
+    }
+  })
+  .catch(() => {
+    btn.disabled = false;
+    if (icon) icon.classList.remove('spinning');
+    if (txt) txt.textContent = 'Sync Now';
+    showToast('Failed to trigger sync.', true);
+  });
+}
+
+// 9. DISCONNECT META
+function disconnectMeta() {
+  if (!confirm('Are you sure you want to disconnect Meta / Facebook lead fetching?')) {
+    return;
+  }
+
+  fetch(DISCONNECT_URL, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      setConnectionActive(false);
+      showToast(data.message);
+    } else {
+      showToast('Failed to disconnect.', true);
+    }
+  })
+  .catch(() => {
+    showToast('Failed to disconnect.', true);
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Login - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div style="min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+  <div style="width: 100%; max-width: 440px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-lg);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); margin-bottom: 12px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+      </div>
+      <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main);">TECHPANDA CRM</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">Sign in to your CRM workspace</p>
+    </div>
+
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 6px; color: var(--text-main);">Username or Email</label>
+        {{ form.username }}
+      </div>
+      <div class="form-group" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label class="form-label" style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0; color: var(--text-main);">Password</label>
+          <a href="{% url 'password_reset' %}" style="font-size: 0.8rem; color: var(--primary); font-weight: 500; text-decoration: none;">Forgot Password?</a>
+        </div>
+        {{ form.password }}
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+          {{ form.remember_me }} Remember me
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; font-weight: 600;">Sign In</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

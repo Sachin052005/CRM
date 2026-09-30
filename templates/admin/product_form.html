@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Edit Product - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Edit Product</h1>
+    <p>Modify course or product specifications</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_products_list' %}" class="btn btn-secondary">Back to Products</a>
+  </div>
+</div>
+
+<div style="max-width: 550px;">
+  <div class="crm-card">
+    <div class="crm-card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Product Name <span class="required">*</span></label>
+          {{ form.name }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          {{ form.description }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price / Fee (₹)</label>
+          {{ form.price }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          {{ form.status }}
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <a href="{% url 'admin_products_list' %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Update Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

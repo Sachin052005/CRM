@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Assign Manager - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Assign Manager to Telecaller</h1>
+    <p>Reassign {{ telecaller.get_full_name|default:telecaller.username }} to a supervising Manager</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_telecallers_list' %}" class="btn btn-secondary">Back to Telecallers</a>
+  </div>
+</div>
+
+<div style="max-width: 550px;">
+  <div class="crm-card">
+    <div class="crm-card-body">
+      <div style="background: var(--bg-body); padding: 14px 18px; border-radius: var(--radius-sm); margin-bottom: 20px;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Selected Agent</div>
+        <div style="font-size: 1.1rem; font-weight: 700;">{{ telecaller.get_full_name|default:telecaller.username }} (@{{ telecaller.username }})</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+          Current Manager: <strong>{{ old_manager.get_full_name|default:old_manager.username|default:"Unassigned" }}</strong>
+        </div>
+      </div>
+
+      <form method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Select New Supervising Manager <span class="required">*</span></label>
+          {{ form.manager }}
+          {% if form.manager.errors %}<div class="form-error">{{ form.manager.errors.0 }}</div>{% endif %}
+          <span class="form-text">The telecaller and their future activity will report under this manager's dashboard.</span>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+          <a href="{% url 'admin_telecallers_list' %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Assign Manager</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

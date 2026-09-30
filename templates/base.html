@@ -1,0 +1,406 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TECHPANDA CRM{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/crm.css' %}">
+  <!-- Chart.js for real dashboard and report charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="app-container">
+    {% if user.is_authenticated %}
+    <!-- Reusable Collapsible Sidebar -->
+    <aside class="app-sidebar" aria-label="Main Navigation">
+      <div class="sidebar-header">
+        <a href="{% url 'login_redirect' %}" class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+          <span class="brand-text">TECHPANDA</span>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        {% if is_admin %}
+        <!-- ADMIN NAVIGATION -->
+        <div class="nav-section-title">Administration</div>
+        <a href="{% url 'admin_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="{% url 'admin_managers_list' %}" class="nav-item {% if 'manager' in request.path and 'admin' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span class="nav-text">Managers</span>
+        </a>
+        <a href="{% url 'admin_telecallers_list' %}" class="nav-item {% if 'telecaller' in request.path and 'admin' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          <span class="nav-text">Telecallers</span>
+        </a>
+
+        <a href="{% url 'admin_leads_list' %}" class="nav-item {% if 'lead' in request.path and 'offline' not in request.path and 'interested' not in request.path and 'demo-scheduled' not in request.path and 'converted' not in request.path and 'lost' not in request.path and 'later' not in request.path and 'discussion' not in request.path and 'admin' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+          <span class="nav-text">Leads</span>
+        </a>
+        <a href="{% url 'admin_offline_leads_list' %}" class="nav-item {% if 'offline' in request.path and 'admin' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span class="nav-text">Offline Leads</span>
+        </a>
+
+        <a href="{% url 'admin_followups_list' %}" class="nav-item {% if 'followup' in request.path and 'admin' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span class="nav-text">Follow-ups</span>
+        </a>
+
+        <a href="{% url 'admin_calls_list' %}" class="nav-item {% if 'call' in request.path and 'admin' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span class="nav-text">Calls</span>
+        </a>
+
+        <a href="{% url 'drive_dashboard' %}" class="nav-item {% if 'drive' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+          <span class="nav-text">☁️ Drive</span>
+        </a>
+
+        <div class="nav-section-title">Master Setup</div>
+        <a href="{% url 'admin_channels_list' %}" class="nav-item {% if 'channel' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+          <span class="nav-text">Channels</span>
+        </a>
+        <a href="{% url 'admin_products_list' %}" class="nav-item {% if 'product' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          <span class="nav-text">Products</span>
+        </a>
+        <a href="{% url 'admin_branches_list' %}" class="nav-item {% if 'branch' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <span class="nav-text">Branches</span>
+        </a>
+
+        <div class="nav-section-title">Insights & Audit</div>
+        <a href="{% url 'admin_reports' %}" class="nav-item {% if 'reports' in request.path and 'admin' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span class="nav-text">Reports</span>
+        </a>
+        <a href="{% url 'admin_activities_list' %}" class="nav-item {% if 'activit' in request.path and 'admin' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span class="nav-text">Activities</span>
+        </a>
+
+        <div class="nav-section-title">System</div>
+        <a href="{% url 'admin_configuration' %}" class="nav-item {% if 'configuration' in request.path and 'integration' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+          <span class="nav-text">Integrations</span>
+        </a>
+        <a href="{% url 'admin_configuration' %}" class="nav-item {% if 'configuration' in request.path and 'integration' not in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span class="nav-text">Configuration</span>
+        </a>
+        <div class="nav-section-title">Settings</div>
+        <a href="{% url 'admin_lead_setup' %}" class="nav-item {% if 'lead-setup' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span class="nav-text">Lead Setup</span>
+        </a>
+        <a href="{% url 'admin_duplicate_leads' %}" class="nav-item {% if 'duplicate' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+          <span class="nav-text">Duplicate Leads</span>
+        </a>
+
+        {% elif is_manager %}
+        <!-- MANAGER NAVIGATION -->
+        <div class="nav-section-title">Manager Portal</div>
+        <a href="{% url 'manager_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'manager_dashboard' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="{% url 'manager_telecallers_list' %}" class="nav-item {% if 'telecaller' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          <span class="nav-text">My Telecallers</span>
+        </a>
+        <a href="{% url 'manager_leads_list' %}" class="nav-item {% if 'lead' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          <span class="nav-text">Leads</span>
+        </a>
+        <a href="{% url 'manager_followups_list' %}" class="nav-item {% if 'followup' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span class="nav-text">Follow-ups</span>
+        </a>
+        <a href="{% url 'manager_calls_list' %}" class="nav-item {% if 'call' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          <span class="nav-text">Calls</span>
+        </a>
+        <a href="{% url 'drive_dashboard' %}" class="nav-item {% if 'drive' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+          <span class="nav-text">☁️ Drive</span>
+        </a>
+        <a href="{% url 'manager_reports' %}" class="nav-item {% if 'report' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span class="nav-text">Reports</span>
+        </a>
+        <a href="{% url 'manager_activities_list' %}" class="nav-item {% if 'activit' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="nav-text">Activities</span>
+        </a>
+
+        {% elif is_telecaller %}
+        <!-- TELECALLER NAVIGATION -->
+        <div class="nav-section-title">Workspace</div>
+        <a href="{% url 'telecaller_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'telecaller_dashboard' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="{% url 'telecaller_leads_list' %}" class="nav-item {% if 'lead' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          <span class="nav-text">My Leads</span>
+        </a>
+        <a href="{% url 'telecaller_followups_list' %}" class="nav-item {% if 'followup' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span class="nav-text">Follow-ups</span>
+        </a>
+        <a href="{% url 'telecaller_calls_list' %}" class="nav-item {% if 'call' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          <span class="nav-text">Calls</span>
+        </a>
+        <a href="{% url 'drive_dashboard' %}" class="nav-item {% if 'drive' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+          <span class="nav-text">☁️ Drive</span>
+        </a>
+        <a href="{% url 'telecaller_activities_list' %}" class="nav-item {% if 'activit' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span class="nav-text">Activities</span>
+        </a>
+        {% endif %}
+      </nav>
+    </aside>
+    {% endif %}
+
+    <!-- Main Content Container -->
+    <div class="app-main">
+      {% if user.is_authenticated %}
+      <!-- Top Application Header -->
+      <header class="app-header">
+        <div class="header-left" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <button type="button" class="btn-sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <span style="font-weight: 700; letter-spacing: -0.01em; color: var(--text-main);">TECHPANDA CRM</span>
+
+          {% if is_admin %}
+          <!-- Global Admin Branch Selector (Section 2, 3) -->
+          <form method="POST" action="{% url 'set_active_branch' %}" id="admin-branch-select-form" style="display: inline-flex; align-items: center; margin: 0; margin-left: 8px;">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <div style="position: relative; display: inline-flex; align-items: center;">
+              <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-right: 6px;">Branch:</span>
+              <select name="branch_id" onchange="this.form.submit()" style="padding: 5px 28px 5px 10px; font-size: 0.825rem; font-weight: 600; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; appearance: none; -webkit-appearance: none;">
+                <option value="all" {% if not selected_branch %}selected{% endif %}>All Branches</option>
+                {% for b in admin_branches %}
+                <option value="{{ b.id }}" {% if selected_branch and selected_branch.id == b.id %}selected{% endif %}>{{ b.name }}</option>
+                {% endfor %}
+              </select>
+              <div style="position: absolute; right: 8px; pointer-events: none; color: var(--text-muted);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </div>
+            </div>
+          </form>
+          {% endif %}
+        </div>
+
+        <div class="header-right">
+          <!-- Theme Toggle -->
+          <button type="button" class="theme-toggle-btn" id="theme-toggle" aria-label="Switch Theme" title="Toggle Light / Dark theme">
+            <span class="icon-moon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </span>
+            <span class="icon-sun" style="display: none;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            </span>
+          </button>
+
+          <!-- Database-Backed Notifications (Section 9) -->
+          <div class="notification-dropdown-wrapper" style="position: relative;">
+            <button type="button" class="notification-badge" id="notification-bell-btn" title="Notifications" aria-expanded="false" style="background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; position: relative;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              <span class="badge-count" id="notif-badge-count" {% if unread_notifications_count == 0 %}style="display: none;"{% endif %}>{{ unread_notifications_count }}</span>
+            </button>
+
+            <!-- Interactive Notification Dropdown Panel -->
+            <div id="notification-panel" style="display: none; position: absolute; right: 0; top: calc(100% + 12px); width: 340px; max-height: 440px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 1050; flex-direction: column; overflow: hidden;">
+              <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.9rem; color: var(--text-main);">Notifications</strong>
+                <button type="button" id="mark-all-read-btn" style="background: none; border: none; font-size: 0.75rem; color: var(--primary); cursor: pointer; font-weight: 600; padding: 0;">Mark all read</button>
+              </div>
+              <div id="notification-items-container" style="overflow-y: auto; max-height: 350px; padding: 0; margin: 0;">
+                <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Loading notifications...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile Chip -->
+          <div class="user-profile-pill">
+            <div class="user-avatar">{{ user.username|slice:":1"|upper }}</div>
+            <div class="user-info-text">
+              <strong>{{ user.get_full_name|default:user.username }}</strong>
+              <span class="badge {% if is_admin %}badge-admin{% elif is_manager %}badge-manager{% else %}badge-telecaller{% endif %}" style="margin-left: 4px;">
+                {{ user_role }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Logout Button -->
+          <a href="{% url 'logout' %}" class="btn btn-secondary btn-sm" title="Log out">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            Logout
+          </a>
+        </div>
+      </header>
+      {% endif %}
+
+      <!-- Content Area -->
+      <main class="content-wrapper">
+        <!-- Messages & Alerts -->
+        {% if messages %}
+        <div class="alert-container">
+          {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">
+            <span>{{ message }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <!-- Global Live Call Execution Modal (Section 48, 49) -->
+  <div id="call-dialer-overlay" class="dialer-overlay">
+    <div class="dialer-card">
+      <div id="dialer-calling-state">
+        <div class="dialer-pulse">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        </div>
+        <p style="text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.1em; color: var(--primary); font-weight: 700;">Active Call In Progress</p>
+        <h3 id="dialer-lead-name" style="margin: 6px 0 2px; font-size: 1.35rem; color: var(--text-main);">Lead Name</h3>
+        <p id="dialer-lead-phone" style="font-size: 1.05rem; color: var(--text-muted); margin-bottom: 6px;">+91 98765 43210</p>
+        <div style="margin-bottom: 12px;">
+          <a id="dialer-native-link" href="#" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            Launch Device Dialer
+          </a>
+        </div>
+        <div id="dialer-timer-display" class="dialer-timer">00:00:00</div>
+        
+        <div style="margin-top: 20px;">
+          <button type="button" class="btn btn-danger" style="padding: 10px 24px; font-weight: 600;" onclick="endActiveCall()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            END CALL
+          </button>
+        </div>
+      </div>
+
+      <!-- Post-Call Outcome & Notes Form (Atomic DB Save) -->
+      <div id="dialer-completion-form" style="display: none; text-align: left;">
+        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; color: var(--text-main); border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">CALL COMPLETED</h3>
+
+        <div style="background: var(--bg-body, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.875rem;">
+          <div style="margin-bottom: 4px;"><strong>Lead:</strong> <span id="completion-lead-name">Arun Kumar</span></div>
+          <div style="margin-bottom: 4px;"><strong>Phone:</strong> <span id="completion-lead-phone">9876543210</span></div>
+          <div><strong>Duration:</strong> <span id="completion-lead-duration">00:00</span></div>
+        </div>
+
+        <form id="call-notes-completion-form" method="POST" action="{% url 'complete_call_record' %}">
+          {% csrf_token %}
+          <input type="hidden" name="call_id" id="call-form-call-id" value="">
+          <input type="hidden" name="lead_id" id="call-form-lead-id" value="">
+          <input type="hidden" name="duration" id="call-form-duration" value="0">
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="font-weight: 600;">Call Notes <span class="required" style="color: #dc2626;">*</span></label>
+            <textarea name="notes" id="call-form-notes" rows="3" class="form-control" required placeholder="Enter what happened during the call..."></textarea>
+            <div id="call-form-notes-error" style="display: none; color: #dc2626; font-size: 0.8rem; margin-top: 4px; font-weight: 600;">Call Notes are required before completing this call.</div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="font-weight: 600;">Call Status <span class="required" style="color: #dc2626;">*</span></label>
+            <select name="call_outcome" id="call-form-outcome" class="form-select" required>
+              <option value="Interested">Interested</option>
+              <option value="Not Interested">Not Interested</option>
+              <option value="Follow-up Required" selected>Follow-up Required</option>
+              <option value="Callback Requested">Callback Requested</option>
+              <option value="Converted">Converted</option>
+              <option value="No Answer">No Answer</option>
+              <option value="Busy">Busy</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="font-weight: 600;">Update Lead Status</label>
+            <select name="lead_status" id="call-form-lead-status" class="form-select">
+              <option value="">-- Keep Current Status --</option>
+              <option value="Contacted">Contacted</option>
+              <option value="Interested">Interested</option>
+              <option value="Follow-up">Follow-up</option>
+              <option value="Demo Scheduled">Demo Scheduled</option>
+              <option value="Institute Visit">Institute Visit</option>
+              <option value="Converted">Converted</option>
+              <option value="Lost">Lost</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="font-weight: 600;">Next Follow-up</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="date" name="follow_up_date" id="call-form-followup-date" class="form-control" placeholder="Date">
+              <input type="time" name="follow_up_time" id="call-form-followup-time" class="form-control" placeholder="Time">
+            </div>
+          </div>
+
+          <div style="margin-top: 18px;">
+            <button type="submit" id="save-call-notes-btn" class="btn btn-success" style="width: 100%; padding: 10px; font-weight: 700; font-size: 0.95rem; justify-content: center;">
+              Save Call Notes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Call Notes Required Modal (Section 14) -->
+  <div id="call-notes-required-modal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: var(--bg-card, #ffffff); border-radius: 12px; width: 100%; max-width: 480px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color, #e2e8f0); overflow: hidden; margin: 20px;">
+      <div style="background: #fef2f2; border-bottom: 1px solid #fee2e2; padding: 16px 20px; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.3rem;">⚠️</span>
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #991b1b; letter-spacing: 0.02em;">CALL NOTES REQUIRED</h3>
+      </div>
+      <div style="padding: 20px;">
+        <p style="color: var(--text-main, #0f172a); font-weight: 600; font-size: 0.95rem; margin-top: 0; margin-bottom: 14px;">
+          You have a completed call that still requires notes.
+        </p>
+        <div style="background: var(--bg-body, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;">
+          <div style="font-size: 0.9rem; margin-bottom: 6px;"><strong>Lead:</strong> <span id="lock-modal-lead-name">-</span></div>
+          <div style="font-size: 0.9rem;"><strong>Phone:</strong> <span id="lock-modal-lead-phone">-</span></div>
+        </div>
+        <p style="color: var(--text-muted, #64748b); font-size: 0.9rem; margin-bottom: 20px;">
+          Please enter and save the call notes before calling another lead.
+        </p>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('call-notes-required-modal').style.display='none'">Close</button>
+          <button type="button" class="btn btn-primary" id="lock-modal-add-notes-btn" style="background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600;">
+            Add Call Notes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/crm.js' %}"></script>
+  <script src="{% static 'js/password_security.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

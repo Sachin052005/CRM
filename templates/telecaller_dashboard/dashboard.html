@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% block title %}Telecaller Workspace - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Telecaller Workspace</h1>
+    <p>Good day, {{ user.first_name|default:user.username }}! Review your daily calling queue and scheduled follow-ups.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'telecaller_leads_list' %}" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+      My Assigned Leads
+    </a>
+    <a href="{% url 'telecaller_followups_list' %}" class="btn btn-secondary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      All Follow-ups
+    </a>
+  </div>
+</div>
+
+<!-- LEAD & CALL SUMMARY (6 Cards) -->
+<div style="margin-bottom: 12px;">
+  <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
+    LEAD & CALL SUMMARY
+  </h3>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+  <!-- Card 1: Fresh Leads Today -->
+  <div class="kpi-card" style="flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Fresh Leads Today</h4>
+        <div class="kpi-value" style="font-size: 2rem; font-weight: 800; color: #2563eb; margin: 4px 0;">{{ fresh_leads_today_count }}</div>
+        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">New leads assigned today</p>
+      </div>
+      <div class="kpi-icon-wrap blue" style="flex-shrink: 0;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>
+      </div>
+    </div>
+    <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 8px;">
+      <a href="{% url 'telecaller_leads_list' %}?filter=fresh_today" class="btn btn-outline-primary btn-sm" style="width: 100%; justify-content: center; font-weight: 600;">
+        View Leads
+      </a>
+    </div>
+  </div>
+
+  <!-- Card 2: Today's Follow-ups -->
+  <div class="kpi-card" style="flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Today's Follow-ups</h4>
+        <div class="kpi-value" style="font-size: 2rem; font-weight: 800; color: #d97706; margin: 4px 0;">{{ todays_followups_count }}</div>
+        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Follow-ups due today</p>
+      </div>
+      <div class="kpi-icon-wrap amber" style="flex-shrink: 0;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      </div>
+    </div>
+    <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 8px;">
+      <a href="{% url 'telecaller_followups_list' %}?status=today" class="btn btn-outline-secondary btn-sm" style="width: 100%; justify-content: center; font-weight: 600;">
+        View Follow-ups
+      </a>
+    </div>
+  </div>
+
+  <!-- Card 3: Pending Calls Today -->
+  <div class="kpi-card" style="flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Pending Calls Today</h4>
+        <div class="kpi-value" style="font-size: 2rem; font-weight: 800; color: #0284c7; margin: 4px 0;">{{ pending_calls_today_count }}</div>
+        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Calls pending today</p>
+      </div>
+      <div class="kpi-icon-wrap purple" style="flex-shrink: 0;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+      </div>
+    </div>
+    <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 8px;">
+      <a href="{% url 'telecaller_calls_list' %}?status=pending" class="btn btn-outline-secondary btn-sm" style="width: 100%; justify-content: center; font-weight: 600;">
+        View Calls
+      </a>
+    </div>
+  </div>
+
+  <!-- Card 4: Not Touched — 7 Days -->
+  <div class="kpi-card" style="flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Not Touched — 7 Days</h4>
+        <div class="kpi-value" style="font-size: 2rem; font-weight: 800; color: #ea580c; margin: 4px 0;">{{ not_touched_7_count }}</div>
+        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">No activity/contact in the last 7 days</p>
+      </div>
+      <div class="kpi-icon-wrap rose" style="flex-shrink: 0;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+      </div>
+    </div>
+    <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 8px;">
+      <a href="{% url 'telecaller_leads_list' %}?filter=untouched_7" class="btn btn-outline-primary btn-sm" style="width: 100%; justify-content: center; font-weight: 600;">
+        View Leads
+      </a>
+    </div>
+  </div>
+
+  <!-- Card 5: Not Touched — 15 Days -->
+  <div class="kpi-card" style="flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Not Touched — 15 Days</h4>
+        <div class="kpi-value" style="font-size: 2rem; font-weight: 800; color: #dc2626; margin: 4px 0;">{{ not_touched_15_count }}</div>
+        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">No activity/contact in the last 15 days</p>
+      </div>
+      <div class="kpi-icon-wrap rose" style="flex-shrink: 0;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      </div>
+    </div>
+    <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 8px;">
+      <a href="{% url 'telecaller_leads_list' %}?filter=untouched_15" class="btn btn-outline-primary btn-sm" style="width: 100%; justify-content: center; font-weight: 600;">
+        View Leads
+      </a>
+    </div>
+  </div>
+
+  <!-- Card 6: Call Not Picked -->
+  <div class="kpi-card" style="flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">Call Not Picked</h4>
+        <div class="kpi-value" style="font-size: 2rem; font-weight: 800; color: #7c3aed; margin: 4px 0;">{{ call_not_picked_count }}</div>
+        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Leads where the call was not answered</p>
+      </div>
+      <div class="kpi-icon-wrap purple" style="flex-shrink: 0;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+      </div>
+    </div>
+    <div style="width: 100%; border-top: 1px solid var(--border-color); padding-top: 8px;">
+      <a href="{% url 'telecaller_leads_list' %}?filter=not_picked" class="btn btn-outline-primary btn-sm" style="width: 100%; justify-content: center; font-weight: 600;">
+        View Leads
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION: TODAY'S WORK -->
+<div class="crm-card" style="margin-bottom: 24px;">
+  <div class="crm-card-header" style="padding: 14px 20px; border-bottom: 1px solid var(--border-color);">
+    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.04em;">TODAY'S WORK</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th style="width: 140px;">Pending Count</th>
+          <th style="text-align: right; width: 180px;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Fresh Leads</strong></td>
+          <td><span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: 700; font-size: 0.95rem; padding: 4px 10px;">{{ fresh_leads_today_count }}</span></td>
+          <td style="text-align: right;">
+            <a href="{% url 'telecaller_leads_list' %}?filter=fresh_today" class="btn btn-primary btn-sm">View Leads</a>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Follow-ups Due</strong></td>
+          <td><span class="badge" style="background: #fef3c7; color: #d97706; font-weight: 700; font-size: 0.95rem; padding: 4px 10px;">{{ todays_followups_count }}</span></td>
+          <td style="text-align: right;">
+            <a href="{% url 'telecaller_followups_list' %}?status=today" class="btn btn-secondary btn-sm">View Follow-ups</a>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Pending Calls</strong></td>
+          <td><span class="badge" style="background: #f1f5f9; color: #475569; font-weight: 700; font-size: 0.95rem; padding: 4px 10px;">{{ pending_calls_today_count }}</span></td>
+          <td style="text-align: right;">
+            <a href="{% url 'telecaller_calls_list' %}?status=pending" class="btn btn-secondary btn-sm">View Calls</a>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Call Not Picked</strong></td>
+          <td><span class="badge" style="background: #fee2e2; color: #dc2626; font-weight: 700; font-size: 0.95rem; padding: 4px 10px;">{{ call_not_picked_count }}</span></td>
+          <td style="text-align: right;">
+            <a href="{% url 'telecaller_leads_list' %}?filter=not_picked" class="btn btn-primary btn-sm">View Leads</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Priority Queue: Today's Scheduled Follow-ups -->
+<div class="crm-card" style="margin-bottom: 24px;">
+  <div class="crm-card-header">
+    <h3>Today's Follow-up Queue</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Lead Name</th>
+          <th>Phone</th>
+          <th>Scheduled Time</th>
+          <th>Notes / Context</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fu in todays_followups %}
+        <tr>
+          <td><strong><a href="{% url 'telecaller_lead_detail' fu.lead.pk %}">{{ fu.lead.name }}</a></strong></td>
+          <td>{{ fu.lead.phone }}</td>
+          <td>{{ fu.follow_up_time|default:"Anytime today" }}</td>
+          <td>{{ fu.notes|truncatechars:50|default:"No notes" }}</td>
+          <td style="text-align: right;">
+            <button type="button" class="btn btn-success btn-sm" onclick="openCallDialer('{{ fu.lead.pk }}', '{{ fu.lead.name|escapejs }}', '{{ fu.lead.phone|escapejs }}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              Call Now
+            </button>
+            <a href="{% url 'telecaller_lead_detail' fu.lead.pk %}" class="btn btn-secondary btn-sm">Lead Info</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5">
+            <div class="empty-state" style="padding: 24px;">
+              <p>No follow-ups due today! Browse your assigned leads to initiate fresh outbound calls.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SECTION: MY LEADS -->
+<div class="crm-card" style="margin-bottom: 24px;">
+  <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 20px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">My Leads</h3>
+      <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: 700; padding: 6px 12px; border-radius: 9999px;">
+        Total Assigned Leads: {{ my_leads_count }}
+      </span>
+    </div>
+
+    <!-- Search Form -->
+    <form method="GET" action="{% url 'telecaller_dashboard' %}" style="display: flex; gap: 8px; align-items: center;">
+      <input type="text" name="search" class="form-control form-control-sm" placeholder="Search my leads..." value="{{ search_query|default:'' }}" style="max-width: 240px;">
+      <button type="submit" class="btn btn-primary btn-sm">Search</button>
+      {% if search_query %}
+      <a href="{% url 'telecaller_dashboard' %}" class="btn btn-secondary btn-sm">Clear</a>
+      {% endif %}
+      <a href="{% url 'telecaller_leads_list' %}" class="btn btn-outline-secondary btn-sm" style="margin-left: 6px;">View All</a>
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th style="width: 70px;">ID</th>
+          <th>Lead Name</th>
+          <th>Phone</th>
+          <th>Branch</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ld in my_leads %}
+        <tr>
+          <td><span style="font-family: monospace; font-weight: 600; color: #64748b;">#{{ ld.id }}</span></td>
+          <td><strong><a href="{% url 'telecaller_lead_detail' ld.pk %}" style="color: inherit; text-decoration: none;">{{ ld.name }}</a></strong></td>
+          <td>
+            <a href="tel:{{ ld.phone }}" style="color: inherit; text-decoration: none; font-weight: 500;" title="Click to call {{ ld.phone }}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 2px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              {{ ld.phone }}
+            </a>
+          </td>
+          <td><span class="badge" style="background: #f1f5f9; color: #334155; font-size: 0.775rem;">{{ ld.branch.name|default:"-" }}</span></td>
+          <td><span class="badge badge-{{ ld.status|lower|slugify }}">{{ ld.status }}</span></td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px;">
+              <button type="button" class="btn btn-success btn-sm" onclick="openCallDialer('{{ ld.pk }}', '{{ ld.name|escapejs }}', '{{ ld.phone|escapejs }}')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Call
+              </button>
+              <a href="{% url 'telecaller_lead_detail' ld.pk %}" class="btn btn-secondary btn-sm">Details</a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">
+            <div class="empty-state" style="padding: 24px; text-align: center; color: var(--text-muted);">
+              <p>No leads assigned to your account yet.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Split Grid: Lead Pipeline Chart & Recent Calls -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <!-- Pipeline Chart -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>My Lead Status Funnel</h3>
+    </div>
+    <div class="crm-card-body">
+      <div style="max-height: 260px; position: relative;">
+        <canvas id="telecallerLeadStatusChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Calls -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Recent Call Activity</h3>
+      <a href="{% url 'telecaller_calls_list' %}" class="btn btn-secondary btn-sm">All Calls</a>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Lead</th>
+            <th>Duration</th>
+            <th>Outcome</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in recent_calls %}
+          <tr>
+            <td><strong>{{ c.lead.name }}</strong></td>
+            <td>{{ c.formatted_duration }}</td>
+            <td><span class="badge badge-telecaller">{{ c.call_outcome }}</span></td>
+            <td>{{ c.call_started_at|date:"M d, H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No calls placed yet today.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const ctx = document.getElementById('telecallerLeadStatusChart');
+  if (ctx) {
+    const rawData = {{ status_dict|safe }};
+    const labels = Object.keys(rawData);
+    const data = Object.values(rawData);
+
+    if (labels.length === 0) {
+      labels.push('No Leads Yet');
+      data.push(0);
+    }
+
+    new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

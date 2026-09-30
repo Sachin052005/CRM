@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% block title %}Manager Dashboard - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Manager Workspace</h1>
+    <p>Real-time analytics and team performance for {{ user.get_full_name|default:user.username }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'manager_telecallers_list' %}" class="btn btn-secondary">My Telecallers</a>
+    <a href="{% url 'manager_leads_list' %}" class="btn btn-primary">Team Leads</a>
+  </div>
+</div>
+
+<!-- Manager KPI Grid -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>My Team Leads</h4>
+      <div class="kpi-value">{{ my_leads_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap blue">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>My Telecallers</h4>
+      <div class="kpi-value">{{ my_telecallers_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap green">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Today's Calls</h4>
+      <div class="kpi-value">{{ todays_calls_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap amber">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Completed Calls</h4>
+      <div class="kpi-value">{{ completed_calls_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap green">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Pending Follow-ups</h4>
+      <div class="kpi-value">{{ pending_followups_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap rose">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Overdue Follow-ups</h4>
+      <div class="kpi-value" style="color: var(--danger);">{{ overdue_followups_count }}</div>
+    </div>
+    <div class="kpi-icon-wrap rose">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    </div>
+  </div>
+</div>
+
+<!-- Telecaller Performance Table -->
+<div class="crm-card">
+  <div class="crm-card-header">
+    <h3>Telecaller Performance Overview</h3>
+    <a href="{% url 'manager_telecallers_list' %}" class="btn btn-secondary btn-sm">View All</a>
+  </div>
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Telecaller</th>
+          <th>Total Leads</th>
+          <th>Total Calls</th>
+          <th>Completed Calls</th>
+          <th>Pending Follow-ups</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in telecaller_perf %}
+        <tr>
+          <td>
+            <strong>{{ t.get_full_name|default:t.username }}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ t.username }}</div>
+          </td>
+          <td><span class="badge badge-manager">{{ t.lead_count }}</span></td>
+          <td>{{ t.call_count }}</td>
+          <td><span class="badge badge-completed">{{ t.completed_calls }}</span></td>
+          <td><span class="badge badge-pending">{{ t.followup_count }}</span></td>
+          <td>
+            {% if t.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
+          </td>
+          <td style="text-align: right;">
+            <a href="{% url 'manager_telecaller_detail' t.pk %}" class="btn btn-secondary btn-sm">Monitor</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <p>No telecallers currently assigned to your team.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Lead Distribution Chart & Recent Calls -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <!-- Chart.js Lead Pipeline -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Team Lead Pipeline</h3>
+    </div>
+    <div class="crm-card-body">
+      <div style="max-height: 280px; position: relative;">
+        <canvas id="managerLeadStatusChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Calls -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Recent Team Calls</h3>
+      <a href="{% url 'manager_calls_list' %}" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Lead</th>
+            <th>Caller</th>
+            <th>Duration</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in recent_calls %}
+          <tr>
+            <td><strong>{{ c.lead.name }}</strong></td>
+            <td>{{ c.caller.username }}</td>
+            <td>{{ c.formatted_duration }}</td>
+            <td><span class="badge badge-telecaller">{{ c.call_outcome }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No calls logged today.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const ctx = document.getElementById('managerLeadStatusChart');
+  if (ctx) {
+    const rawData = {{ status_dict|safe }};
+    const labels = Object.keys(rawData);
+    const data = Object.values(rawData);
+
+    if (labels.length === 0) {
+      labels.push('No Leads Yet');
+      data.push(0);
+    }
+
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

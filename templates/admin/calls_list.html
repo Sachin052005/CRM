@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% block title %}Calls - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <div class="page-title-group">
+    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Call Log History</h1>
+    <p style="color: var(--text-muted); font-size: 0.875rem;">Complete audit log of all telecaller and counselor calling engagements</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_call_create' %}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      + Log Call Record
+    </a>
+  </div>
+</div>
+
+<div class="filter-card">
+  <form method="GET" class="filter-form" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+    <div class="filter-col" style="flex: 2 1 200px;">
+      <label>Search</label>
+      <input type="text" name="search" class="form-control" placeholder="Search lead, caller, notes..." value="{{ search_query }}">
+    </div>
+    <div class="filter-col" style="flex: 1 1 140px;">
+      <label>Status</label>
+      <select name="status" class="form-select">
+        <option value="">All Statuses</option>
+        {% for code, label in statuses %}
+        <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 150px;">
+      <label>Outcome</label>
+      <select name="outcome" class="form-select">
+        <option value="">All Outcomes</option>
+        {% for code, label in outcomes %}
+        <option value="{{ code }}" {% if outcome_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 140px;">
+      <label>Manager</label>
+      <select name="manager" class="form-select">
+        <option value="">All Managers</option>
+        {% for m in managers %}
+        <option value="{{ m.id }}" {% if manager_filter == m.id|stringformat:"i" %}selected{% endif %}>
+          {% if m %}{{ m.get_full_name|default:m.username }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 140px;">
+      <label>Telecaller</label>
+      <select name="telecaller" class="form-select">
+        <option value="">All Telecallers</option>
+        {% for t in telecallers %}
+        <option value="{{ t.id }}" {% if telecaller_filter == t.id|stringformat:"i" %}selected{% endif %}>
+          {% if t %}{{ t.get_full_name|default:t.username }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>Branch</label>
+      <select name="branch" class="form-select">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if branch_filter == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>From Date</label>
+      <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>To Date</label>
+      <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+    </div>
+    <div style="display: flex; gap: 8px; align-items: flex-end;">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <a href="{% url 'admin_calls_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Lead / Customer</th>
+          <th>Caller</th>
+          <th>Manager</th>
+          <th>Telecaller</th>
+          <th>Start Time</th>
+          <th>Duration</th>
+          <th>Outcome</th>
+          <th>Status</th>
+          <th>Recording</th>
+          <th>Notes</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in page_obj %}
+        <tr>
+          <td>
+            {% if c.lead %}
+            <strong><a href="{% url 'admin_lead_detail' c.lead.pk %}">{{ c.lead.name }}</a></strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ c.lead.phone }}</div>
+            {% else %}
+            <span style="color: var(--text-muted);">Unknown Lead</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if c.caller %}
+              {{ c.caller.get_full_name|default:c.caller.username }}
+            {% else %}
+              <span style="color: var(--text-muted); font-style: italic;">Unknown</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if c.manager %}
+              {{ c.manager.get_full_name|default:c.manager.username }}
+            {% else %}
+              <span style="color: var(--text-muted); font-style: italic;">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if c.telecaller %}
+              {{ c.telecaller.get_full_name|default:c.telecaller.username }}
+            {% else %}
+              <span style="color: var(--text-muted); font-style: italic;">Unassigned</span>
+            {% endif %}
+          </td>
+          <td style="font-size: 0.85rem; white-space: nowrap;">
+            {{ c.call_started_at|date:"M d, Y" }}
+            <div style="color: var(--text-muted); font-size: 0.75rem;">{{ c.call_started_at|date:"H:i" }}</div>
+          </td>
+          <td><strong>{{ c.formatted_duration }}</strong></td>
+          <td><span class="badge badge-telecaller">{{ c.call_outcome }}</span></td>
+          <td><span class="badge badge-completed">{{ c.call_status }}</span></td>
+          <td>
+            {% if c.recording_url %}
+            <a href="{{ c.recording_url }}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 0.75rem;">Play</a>
+            {% else %}
+            <span style="color: var(--text-muted); font-size: 0.75rem; font-style: italic;">No recording</span>
+            {% endif %}
+          </td>
+          <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {{ c.notes|default:"-" }}
+          </td>
+          <td style="text-align: right;">
+            <a href="{% url 'admin_call_detail' c.pk %}" class="btn btn-secondary btn-sm">Details</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="11">
+            <div class="empty-state">
+              <p>No call history records found matching this query.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid var(--border-color); font-size: 0.85rem;">
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    <div style="display: flex; gap: 6px;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if extra_params %}&{{ extra_params }}{% endif %}" class="btn btn-secondary btn-sm">&laquo; Prev</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if extra_params %}&{{ extra_params }}{% endif %}" class="btn btn-secondary btn-sm">Next &raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

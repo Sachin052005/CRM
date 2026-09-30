@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Admin Portal Login - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div style="min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+  <div style="width: 100%; max-width: 440px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-lg);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--purple-light); color: var(--purple); margin-bottom: 12px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+      </div>
+      <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main);">Admin Secure Login</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">Authorized administrators only</p>
+    </div>
+
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        {{ form.username }}
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        {{ form.password }}
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+          {{ form.remember_me }} Remember me
+        </label>
+        <a href="{% url 'login' %}" style="font-size: 0.8rem; color: var(--text-muted);">Switch Portal</a>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; font-weight: 600; background: var(--purple); border-color: var(--purple);">
+        Login as Admin
+      </button>
+    </form>
+    <!-- Public registration link is intentionally omitted as per Section 4 requirement -->
+  </div>
+</div>
+{% endblock %}

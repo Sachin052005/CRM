@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Team Activities - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Team Activity History</h1>
+    <p>Actions performed by you and your supervised telecaller staff</p>
+  </div>
+</div>
+
+<div class="filter-card">
+  <form method="GET" class="filter-form">
+    <div class="filter-col">
+      <label>Filter by Team Member</label>
+      <select name="user" class="form-select">
+        <option value="">All Team Members</option>
+        {% for u in team_members %}
+        <option value="{{ u.id }}" {% if user_filter == u.id|stringformat:"i" %}selected{% endif %}>{{ u.get_full_name|default:u.username }} ({{ u.role }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a href="{% url 'manager_activities_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>User</th>
+          <th>Action</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in page_obj %}
+        <tr>
+          <td>{{ a.timestamp|date:"M d, Y H:i" }}</td>
+          <td><strong>{{ a.user.get_full_name|default:a.user.username }}</strong></td>
+          <td>{{ a.action }}</td>
+          <td>{{ a.description }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4">
+            <div class="empty-state"><p>No team activity logged yet.</p></div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

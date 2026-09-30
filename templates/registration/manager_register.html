@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Register as Manager - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div style="min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+  <div style="width: 100%; max-width: 520px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-lg);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); margin-bottom: 12px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+      </div>
+      <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main);">Manager Registration</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">Create a Manager / Counsellor account</p>
+    </div>
+
+    <form method="POST">
+      {% csrf_token %}
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">First Name <span class="required">*</span></label>
+          {{ form.first_name }}
+          {% if form.first_name.errors %}<div class="form-error">{{ form.first_name.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name <span class="required">*</span></label>
+          {{ form.last_name }}
+          {% if form.last_name.errors %}<div class="form-error">{{ form.last_name.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Username <span class="required">*</span></label>
+        {{ form.username }}
+        {% if form.username.errors %}<div class="form-error">{{ form.username.errors.0 }}</div>{% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address <span class="required">*</span></label>
+        {{ form.email }}
+        {% if form.email.errors %}<div class="form-error">{{ form.email.errors.0 }}</div>{% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        {{ form.phone }}
+        {% if form.phone.errors %}<div class="form-error">{{ form.phone.errors.0 }}</div>{% endif %}
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Password <span class="required">*</span></label>
+          {{ form.password }}
+          {% if form.password.errors %}<div class="form-error">{{ form.password.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password <span class="required">*</span></label>
+          {{ form.confirm_password }}
+          {% if form.confirm_password.errors %}<div class="form-error">{{ form.confirm_password.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px; font-weight: 600; margin-top: 10px;">
+        Complete Registration
+      </button>
+    </form>
+
+    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); text-align: center; font-size: 0.825rem; color: var(--text-muted);">
+      Already registered? <a href="{% url 'manager_login' %}" style="font-weight: 600;">Sign in to Manager Portal</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

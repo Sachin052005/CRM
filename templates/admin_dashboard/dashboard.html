@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Organization Overview</h1>
+    <p>Real-time analytics and management control center for TECHPANDA CRM</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_manager_create' %}" class="btn btn-secondary btn-sm">+ Add Manager</a>
+    <a href="{% url 'admin_telecaller_create' %}" class="btn btn-secondary btn-sm">+ Add Telecaller</a>
+    <a href="{% url 'admin_lead_create' %}" class="btn btn-primary btn-sm">+ Add Lead</a>
+    <a href="{% url 'admin_leads_import' %}" class="btn btn-secondary btn-sm">Import Leads</a>
+    <a href="{% url 'admin_reports' %}" class="btn btn-secondary btn-sm">Reports</a>
+  </div>
+</div>
+
+<!-- Admin Dashboard Filters (Section 15) -->
+<div class="filter-card">
+  <form method="GET" class="filter-form">
+    <div class="filter-col">
+      <label>From Date</label>
+      <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+    </div>
+    <div class="filter-col">
+      <label>To Date</label>
+      <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+    </div>
+    <div class="filter-col">
+      <label>Manager</label>
+      <select name="manager" class="form-select">
+        <option value="">All Managers</option>
+        {% for m in managers %}
+        <option value="{{ m.id }}" {% if manager_filter == m.id|stringformat:"i" %}selected{% endif %}>{{ m.get_full_name|default:m.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col">
+      <label>Telecaller</label>
+      <select name="telecaller" class="form-select">
+        <option value="">All Telecallers</option>
+        {% for t in telecallers %}
+        <option value="{{ t.id }}" {% if telecaller_filter == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col">
+      <label>Branch</label>
+      <select name="branch" class="form-select">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if branch_filter == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col">
+      <label>Channel</label>
+      <select name="channel" class="form-select">
+        <option value="">All Channels</option>
+        {% for c in channels %}
+        <option value="{{ c.id }}" {% if channel_filter == c.id|stringformat:"i" %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col">
+      <label>Status</label>
+      <select name="status" class="form-select">
+        <option value="">All Statuses</option>
+        {% for code, label in statuses %}
+        <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- 12 Real Metric KPI Cards (Section 15) -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Total Leads</h4>
+      <div class="kpi-value">{{ total_leads }}</div>
+    </div>
+    <div class="kpi-icon-wrap blue">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>New Leads</h4>
+      <div class="kpi-value">{{ new_leads }}</div>
+    </div>
+    <div class="kpi-icon-wrap blue">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Active Leads</h4>
+      <div class="kpi-value">{{ active_leads }}</div>
+    </div>
+    <div class="kpi-icon-wrap green">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Total Managers</h4>
+      <div class="kpi-value">{{ total_managers }}</div>
+    </div>
+    <div class="kpi-icon-wrap purple">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Total Telecallers</h4>
+      <div class="kpi-value">{{ total_telecallers }}</div>
+    </div>
+    <div class="kpi-icon-wrap green">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Pending Follow-ups</h4>
+      <div class="kpi-value">{{ pending_followups }}</div>
+    </div>
+    <div class="kpi-icon-wrap amber">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Overdue Follow-ups</h4>
+      <div class="kpi-value" style="color: var(--danger);">{{ overdue_followups }}</div>
+    </div>
+    <div class="kpi-icon-wrap rose">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Total Calls</h4>
+      <div class="kpi-value">{{ total_calls }}</div>
+    </div>
+    <div class="kpi-icon-wrap blue">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Completed Calls</h4>
+      <div class="kpi-value">{{ completed_calls }}</div>
+    </div>
+    <div class="kpi-icon-wrap green">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Products / Courses</h4>
+      <div class="kpi-value">{{ total_products }}</div>
+    </div>
+    <div class="kpi-icon-wrap purple">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Lead Channels</h4>
+      <div class="kpi-value">{{ total_channels }}</div>
+    </div>
+    <div class="kpi-icon-wrap blue">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon></svg>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Branches</h4>
+      <div class="kpi-value">{{ total_branches }}</div>
+    </div>
+    <div class="kpi-icon-wrap green">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+    </div>
+  </div>
+</div>
+
+<!-- Performance Tables (Section 15) -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- Manager Performance -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Manager Performance</h3>
+      <a href="{% url 'admin_managers_list' %}" class="btn btn-secondary btn-sm">All Managers</a>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Manager</th>
+            <th>Leads</th>
+            <th>Calls</th>
+            <th>Follow-ups</th>
+            <th>Converted</th>
+            <th>Status</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in manager_performance %}
+          <tr>
+            <td><strong><a href="{% url 'admin_manager_detail' m.pk %}">{{ m.get_full_name|default:m.username }}</a></strong></td>
+            <td><span class="badge badge-telecaller">{{ m.lead_count }}</span></td>
+            <td>{{ m.call_count }}</td>
+            <td>{{ m.followup_count }}</td>
+            <td><span class="badge badge-completed">{{ m.converted_count }}</span></td>
+            <td>{% if m.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}</td>
+            <td style="text-align: right;"><a href="{% url 'admin_manager_detail' m.pk %}" class="btn btn-secondary btn-sm">View</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">No manager records available.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Telecaller Performance -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Telecaller Performance</h3>
+      <a href="{% url 'admin_telecallers_list' %}" class="btn btn-secondary btn-sm">All Telecallers</a>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Telecaller</th>
+            <th>Manager</th>
+            <th>Leads</th>
+            <th>Calls</th>
+            <th>Follow-ups</th>
+            <th>Status</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in telecaller_performance %}
+          <tr>
+            <td><strong><a href="{% url 'admin_telecaller_detail' t.pk %}">{{ t.get_full_name|default:t.username }}</a></strong></td>
+            <td>{% if t.manager %}{{ t.manager.get_full_name|default:t.manager.username }}{% else %}-{% endif %}</td>
+            <td><span class="badge badge-telecaller">{{ t.lead_count }}</span></td>
+            <td>{{ t.call_count }}</td>
+            <td>{{ t.followup_count }}</td>
+            <td>{% if t.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}</td>
+            <td style="text-align: right;"><a href="{% url 'admin_telecaller_detail' t.pk %}" class="btn btn-secondary btn-sm">View</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">No telecaller records available.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Leads & Recent Calls -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- Recent Leads -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Recent Inquiries & Leads</h3>
+      <a href="{% url 'admin_leads_list' %}" class="btn btn-secondary btn-sm">All Leads</a>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Lead</th>
+            <th>Channel</th>
+            <th>Manager</th>
+            <th>Telecaller</th>
+            <th>Status</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ld in recent_leads %}
+          <tr>
+            <td><strong><a href="{% url 'admin_lead_detail' ld.pk %}">{{ ld.name }}</a></strong></td>
+            <td>{{ ld.channel.name|default:"-" }}</td>
+            <td>{% if ld.assigned_manager %}{{ ld.assigned_manager.get_full_name|default:ld.assigned_manager.username }}{% else %}-{% endif %}</td>
+            <td>{% if ld.assigned_telecaller %}{{ ld.assigned_telecaller.get_full_name|default:ld.assigned_telecaller.username }}{% else %}-{% endif %}</td>
+            <td><span class="badge badge-{{ ld.status|lower|slugify }}">{{ ld.status }}</span></td>
+            <td style="text-align: right;"><a href="{% url 'admin_lead_detail' ld.pk %}" class="btn btn-secondary btn-sm">View</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">No leads created yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Calls -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Recent Calls</h3>
+      <a href="{% url 'admin_calls_list' %}" class="btn btn-secondary btn-sm">All Calls</a>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Lead</th>
+            <th>Caller</th>
+            <th>Duration</th>
+            <th>Outcome</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in recent_calls %}
+          <tr>
+            <td><strong>{% if c.lead %}{{ c.lead.name }}{% else %}Unknown Lead{% endif %}</strong></td>
+            <td>{% if c.caller %}{{ c.caller.get_full_name|default:c.caller.username }}{% else %}Unknown{% endif %}</td>
+            <td>{{ c.formatted_duration }}</td>
+            <td><span class="badge badge-telecaller">{{ c.call_outcome }}</span></td>
+            <td>{{ c.call_started_at|date:"M d, H:i" }}</td>
+          </tr>
+
+          {% empty %}
+          <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">No calls logged yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Activities Audit -->
+<div class="crm-card">
+  <div class="crm-card-header">
+    <h3>Recent CRM Activities</h3>
+    <a href="{% url 'admin_activities_list' %}" class="btn btn-secondary btn-sm">Full Audit</a>
+  </div>
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Role</th>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Date/Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in recent_activities %}
+        <tr>
+          <td><strong>{{ a.user.get_full_name|default:a.user.username }}</strong></td>
+          <td><span class="badge {% if a.user.role == 'ADMIN' %}badge-admin{% elif a.user.role == 'MANAGER' %}badge-manager{% else %}badge-telecaller{% endif %}">{{ a.user.role }}</span></td>
+          <td><strong>{{ a.action }}</strong></td>
+          <td>{{ a.description }}</td>
+          <td>{{ a.timestamp|date:"M d, Y H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">No activities recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

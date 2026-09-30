@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Create Telecaller - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Create Telecaller</h1>
+    <p>Onboard a new calling agent and assign them to a supervising Manager</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_telecallers_list' %}" class="btn btn-secondary">Back to Telecallers</a>
+  </div>
+</div>
+
+<div style="max-width: 650px;">
+  <div class="crm-card">
+    <div class="crm-card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">First Name <span class="required">*</span></label>
+            {{ form.first_name }}
+            {% if form.first_name.errors %}<div class="form-error">{{ form.first_name.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name <span class="required">*</span></label>
+            {{ form.last_name }}
+            {% if form.last_name.errors %}<div class="form-error">{{ form.last_name.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Username <span class="required">*</span></label>
+          {{ form.username }}
+          {% if form.username.errors %}<div class="form-error">{{ form.username.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address <span class="required">*</span></label>
+          {{ form.email }}
+          {% if form.email.errors %}<div class="form-error">{{ form.email.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          {{ form.phone }}
+          {% if form.phone.errors %}<div class="form-error">{{ form.phone.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">Assign to Manager</label>
+            {{ form.manager }}
+            {% if form.manager.errors %}<div class="form-error">{{ form.manager.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label">Branch Assignment</label>
+            {{ form.branch }}
+            {% if form.branch.errors %}<div class="form-error">{{ form.branch.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">Password <span class="required">*</span></label>
+            {{ form.password }}
+            {% if form.password.errors %}<div class="form-error">{{ form.password.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm Password <span class="required">*</span></label>
+            {{ form.confirm_password }}
+            {% if form.confirm_password.errors %}<div class="form-error">{{ form.confirm_password.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 6px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            {{ form.is_active }} Active Account
+          </label>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+          <a href="{% url 'admin_telecallers_list' %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Create Telecaller</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

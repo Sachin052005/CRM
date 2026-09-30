@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_title }} - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+  <div class="page-title-group">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin: 0;">{{ page_title|upper }}</h1>
+      <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 0.775rem; font-weight: 600; padding: 4px 8px;">
+        {{ page_obj.paginator.count }} Lead{{ page_obj.paginator.count|pluralize }}
+      </span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">{{ page_description }}</p>
+  </div>
+  <div class="page-actions" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+    <a href="{% url 'admin_offline_leads_list' %}" class="btn btn-secondary">
+      &larr; Offline Leads
+    </a>
+    <a href="{% url 'admin_lead_create' %}" class="btn btn-primary">
+      + Add Lead
+    </a>
+  </div>
+</div>
+
+<!-- PIPELINE NAVIGATION PILLS -->
+<div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 16px;">
+  <a href="{% url 'admin_interested_leads' %}" class="btn btn-sm {% if current_status == 'Interested' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius: 20px; white-space: nowrap;">
+    Interested
+  </a>
+  <a href="{% url 'admin_followups_list' %}" class="btn btn-sm {% if current_status == 'Follow-up' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius: 20px; white-space: nowrap;">
+    Follow-ups
+  </a>
+  <a href="{% url 'admin_demo_scheduled_leads' %}" class="btn btn-sm {% if current_status == 'Demo Scheduled' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius: 20px; white-space: nowrap;">
+    Demo Scheduled
+  </a>
+  <a href="{% url 'admin_converted_leads' %}" class="btn btn-sm {% if current_status == 'Converted' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius: 20px; white-space: nowrap;">
+    Converted
+  </a>
+  <a href="{% url 'admin_lost_leads' %}" class="btn btn-sm {% if current_status == 'Lost' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius: 20px; white-space: nowrap;">
+    Lost
+  </a>
+  <a href="{% url 'admin_later_leads' %}" class="btn btn-sm {% if current_status == 'Later' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius: 20px; white-space: nowrap;">
+    Later
+  </a>
+  <a href="{% url 'admin_discussion_leads' %}" class="btn btn-sm {% if current_status == 'Discussion' %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius: 20px; white-space: nowrap;">
+    Discussion
+  </a>
+</div>
+
+<!-- FILTERS -->
+<div class="filter-card" style="margin-bottom: 20px;">
+  <form method="GET" class="filter-form" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+    <div class="filter-col" style="flex: 2 1 200px;">
+      <label>Search</label>
+      <input type="text" name="search" class="form-control" placeholder="Search name, phone, notes..." value="{{ search_query }}">
+    </div>
+    <div class="filter-col" style="flex: 1 1 140px;">
+      <label>Manager</label>
+      <select name="manager" class="form-select">
+        <option value="">All Managers</option>
+        {% for m in managers %}
+        <option value="{{ m.id }}" {% if manager_filter == m.id|stringformat:"i" %}selected{% endif %}>{{ m.get_full_name|default:m.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 140px;">
+      <label>Telecaller</label>
+      <select name="telecaller" class="form-select">
+        <option value="">All Telecallers</option>
+        {% for t in telecallers %}
+        <option value="{{ t.id }}" {% if telecaller_filter == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>Course / Product</label>
+      <select name="product" class="form-select">
+        <option value="">All Courses</option>
+        {% for p in products %}
+        <option value="{{ p.id }}" {% if product_filter == p.id|stringformat:"i" %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="flex: 1 1 130px;">
+      <label>Branch</label>
+      <select name="branch" class="form-select">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if branch_filter == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a href="?" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- LEADS TABLE -->
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Course</th>
+          <th>Source</th>
+          <th>Manager</th>
+          <th>Telecaller</th>
+          <th>Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ld in page_obj %}
+        <tr id="leadRow-{{ ld.pk }}">
+          <td>
+            <strong><a href="{% url 'admin_lead_detail' ld.pk %}">{{ ld.name }}</a></strong>
+            {% if ld.email %}
+            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ ld.email }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <div style="font-family: monospace; font-weight: 500;">{{ ld.phone }}</div>
+          </td>
+          <td>{% if ld.product %}{{ ld.product.name }}{% else %}-{% endif %}</td>
+          <td>
+            <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
+              {% if ld.source %}{{ ld.source }}{% elif ld.channel %}{{ ld.channel.name }}{% else %}Offline{% endif %}
+            </span>
+          </td>
+          <td>{% if ld.assigned_manager %}{{ ld.assigned_manager.get_full_name|default:ld.assigned_manager.username }}{% else %}Unassigned{% endif %}</td>
+          <td>{% if ld.assigned_telecaller %}{{ ld.assigned_telecaller.get_full_name|default:ld.assigned_telecaller.username }}{% else %}Unassigned{% endif %}</td>
+          <td>
+            <select class="form-select form-select-sm" style="font-size: 0.8rem; font-weight: 600; padding: 4px 8px; width: 140px;" onchange="updateLeadPipelineStatus({{ ld.pk }}, this.value, this)">
+              {% for s in statuses %}
+              <option value="{{ s }}" {% if ld.status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td style="text-align: right; white-space: nowrap;">
+            <a href="{% url 'admin_lead_detail' ld.pk %}" class="btn btn-secondary btn-sm">View</a>
+            <a href="{% url 'admin_lead_edit' ld.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+            <a href="https://wa.me/{{ ld.phone|cut:'+'|cut:' '|cut:'-' }}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25D366; font-weight: 600;">WA</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">
+            No leads currently in the <strong>{{ page_title }}</strong> stage.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid var(--border-color); font-size: 0.85rem;">
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    <div style="display: flex; gap: 6px;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-secondary btn-sm">&laquo; Prev</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}" class="btn btn-secondary btn-sm">Next &raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Dynamic Notification Toast -->
+<div id="statusToast" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: #0f172a; color: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); font-size: 0.875rem;">
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+function updateLeadPipelineStatus(leadId, newStatus, selectEl) {
+  const originalVal = selectEl.getAttribute('data-original') || '{{ current_status }}';
+  selectEl.disabled = true;
+
+  fetch(`/admin/leads/${leadId}/status/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': getCookie('csrftoken')
+    },
+    body: new URLSearchParams({ status: newStatus })
+  })
+  .then(res => res.json())
+  .then(data => {
+    selectEl.disabled = false;
+    if (data.success) {
+      showToast(`Lead moved to '${newStatus}'!`);
+      // If moved to a different pipeline status, remove row after visual feedback
+      if (newStatus !== '{{ current_status }}') {
+        const row = document.getElementById(`leadRow-${leadId}`);
+        if (row) {
+          row.style.transition = 'all 0.5s';
+          row.style.opacity = '0.3';
+          row.style.background = '#fef3c7';
+          setTimeout(() => {
+            row.remove();
+          }, 800);
+        }
+      }
+    } else {
+      alert(data.error || 'Failed to update lead status');
+      selectEl.value = originalVal;
+    }
+  })
+  .catch(err => {
+    selectEl.disabled = false;
+    alert('Communication error: ' + err);
+    selectEl.value = originalVal;
+  });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('statusToast');
+  const txt = document.getElementById('toastMsg');
+  if (toast && txt) {
+    txt.textContent = msg;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+  }
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+</script>
+{% endblock %}

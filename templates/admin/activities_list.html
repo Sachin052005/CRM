@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Audit Logs - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>System Audit Trail</h1>
+    <p>Comprehensive activity and compliance log across all accounts and records</p>
+  </div>
+</div>
+
+<div class="filter-card">
+  <form method="GET" class="filter-form">
+    <div class="filter-col" style="flex: 2;">
+      <label>Search Description</label>
+      <input type="text" name="search" class="form-control" placeholder="Search activity, description..." value="{{ search_query }}">
+    </div>
+    <div class="filter-col">
+      <label>User</label>
+      <select name="user" class="form-select">
+        <option value="">All Users</option>
+        {% for u in users %}
+        <option value="{{ u.id }}" {% if user_filter == u.id|stringformat:"i" %}selected{% endif %}>{{ u.username }} ({{ u.role }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col">
+      <label>Role</label>
+      <select name="role" class="form-select">
+        <option value="">All Roles</option>
+        {% for code, label in roles %}
+        <option value="{{ code }}" {% if role_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a href="{% url 'admin_activities_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>User</th>
+          <th>Role</th>
+          <th>Action</th>
+          <th>Target Object</th>
+          <th>Description</th>
+          <th>IP Address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in page_obj %}
+        <tr>
+          <td style="white-space: nowrap;">{{ a.timestamp|date:"M d, Y H:i:s" }}</td>
+          <td><strong>{{ a.user.get_full_name|default:a.user.username }}</strong></td>
+          <td>
+            <span class="badge {% if a.user.role == 'ADMIN' %}badge-admin{% elif a.user.role == 'MANAGER' %}badge-manager{% else %}badge-telecaller{% endif %}">
+              {{ a.user.role }}
+            </span>
+          </td>
+          <td><strong>{{ a.action }}</strong></td>
+          <td>{{ a.object_type|default:"-" }}{% if a.object_id %} #{{ a.object_id }}{% endif %}</td>
+          <td>{{ a.description }}</td>
+          <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">{{ a.ip_address|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <p>No activity records logged.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid var(--border-color); font-size: 0.85rem;">
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    <div style="display: flex; gap: 6px;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}&user={{ user_filter }}&role={{ role_filter }}&search={{ search_query }}" class="btn btn-secondary btn-sm">&laquo; Prev</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&user={{ user_filter }}&role={{ role_filter }}&search={{ search_query }}" class="btn btn-secondary btn-sm">Next &raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

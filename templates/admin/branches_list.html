@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}Branches - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Branches & Centers</h1>
+    <p>Manage office locations, institute campuses, and contact info</p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+  <!-- Branches Table -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>All Branches</h3>
+      <form method="GET" style="display: flex; gap: 8px;">
+        <input type="text" name="search" class="form-control" style="width: 180px; padding: 4px 10px; font-size: 0.8rem;" placeholder="Search branches..." value="{{ search_query }}">
+        <select name="status" class="form-select" style="width: 110px; padding: 4px 8px; font-size: 0.8rem;" onchange="this.form.submit()">
+          <option value="">All</option>
+          <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>Active</option>
+          <option value="Inactive" {% if status_filter == 'Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+      </form>
+    </div>
+
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Branch Name</th>
+            <th>Contact Phone</th>
+            <th>Lead Count</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for br in page_obj %}
+          <tr>
+            <td>
+              <strong>{{ br.name }}</strong>
+              {% if br.address %}
+              <div style="font-size: 0.75rem; color: var(--text-muted);">{{ br.address|truncatechars:50 }}</div>
+              {% endif %}
+            </td>
+            <td>{{ br.phone|default:"-" }}</td>
+            <td><span class="badge badge-manager">{{ br.lead_count }} leads</span></td>
+            <td>
+              {% if br.status == 'Active' %}
+              <span class="badge badge-active">Active</span>
+              {% else %}
+              <span class="badge badge-inactive">Inactive</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="{% url 'admin_branch_edit' br.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'admin_branch_toggle_status' br.pk %}" class="btn btn-sm {% if br.status == 'Active' %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change branch status?">
+                {% if br.status == 'Active' %}Deactivate{% else %}Activate{% endif %}
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                </div>
+                <h4>No Branches Found</h4>
+                <p>Register your first operational branch office on the right.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Branch Card -->
+  <div class="crm-card" style="height: fit-content;">
+    <div class="crm-card-header">
+      <h3>Add Branch</h3>
+    </div>
+    <div class="crm-card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <div class="form-group">
+          <label class="form-label">Branch Name <span class="required">*</span></label>
+          {{ form.name }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          {{ form.phone }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          {{ form.address }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          {{ form.status }}
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Save Branch</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

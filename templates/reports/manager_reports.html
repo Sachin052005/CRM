@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}Team Analytics - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Team Analytics & Performance</h1>
+    <p>Performance metrics, lead funnel, and agent conversion rates for your team</p>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Total Team Leads</h4>
+      <div class="kpi-value">{{ total_leads }}</div>
+    </div>
+    <div class="kpi-icon-wrap blue"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Converted Leads</h4>
+      <div class="kpi-value">{{ converted_leads }}</div>
+    </div>
+    <div class="kpi-icon-wrap green"><polyline points="20 6 9 17 4 12"></polyline></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Team Conversion</h4>
+      <div class="kpi-value">{{ conversion_rate }}%</div>
+    </div>
+    <div class="kpi-icon-wrap purple"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-info">
+      <h4>Team Calls Logged</h4>
+      <div class="kpi-value">{{ total_calls }}</div>
+    </div>
+    <div class="kpi-icon-wrap amber"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></div>
+  </div>
+</div>
+
+<!-- Telecaller Performance Breakdown Table -->
+<div class="crm-card" style="margin-bottom: 24px;">
+  <div class="crm-card-header">
+    <h3>Telecaller Team Performance</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Telecaller</th>
+          <th>Assigned Leads</th>
+          <th>Calls Placed</th>
+          <th>Completed Calls</th>
+          <th>Converted Leads</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in telecaller_performance %}
+        <tr>
+          <td><strong>{{ t.get_full_name|default:t.username }}</strong></td>
+          <td><span class="badge badge-manager">{{ t.lead_count }}</span></td>
+          <td>{{ t.call_count }}</td>
+          <td><span class="badge badge-completed">{{ t.completed_calls }}</span></td>
+          <td><span class="badge badge-active">{{ t.converted_leads }}</span></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5">
+            <div class="empty-state"><p>No telecallers assigned to your team.</p></div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Pipeline and Channel Breakdown -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Team Lead Funnel</h3>
+    </div>
+    <div class="crm-card-body">
+      <div style="max-height: 260px; position: relative;">
+        <canvas id="mgrStatusChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Call Outcomes</h3>
+    </div>
+    <div class="crm-card-body">
+      <div style="max-height: 260px; position: relative;">
+        <canvas id="mgrCallOutcomeChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const statusData = {{ status_distribution|safe }};
+  const callOutcomeData = {{ call_outcome_distribution|safe }};
+
+  const statusCtx = document.getElementById('mgrStatusChart');
+  if (statusCtx) {
+    new Chart(statusCtx, {
+      type: 'doughnut',
+      data: {
+        labels: statusData.map(d => d.status) || ['No Data'],
+        datasets: [{
+          data: statusData.map(d => d.count) || [0],
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+
+  const callCtx = document.getElementById('mgrCallOutcomeChart');
+  if (callCtx) {
+    new Chart(callCtx, {
+      type: 'pie',
+      data: {
+        labels: callOutcomeData.map(d => d.call_outcome) || ['None'],
+        datasets: [{
+          data: callOutcomeData.map(d => d.count) || [0],
+          backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#64748b']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+});
+</script>
+{% endblock %}

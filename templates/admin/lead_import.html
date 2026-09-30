@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}Import Leads - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Bulk Lead Import</h1>
+    <p>Upload Excel (.xlsx) or CSV (.csv) spreadsheets to batch-import leads into the database</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_leads_list' %}" class="btn btn-secondary">Back to Leads</a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
+  <!-- Upload Card -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>File Upload</h3>
+    </div>
+    <div class="crm-card-body">
+      <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">Select .csv or .xlsx Spreadsheet <span class="required">*</span></label>
+          {{ form.file }}
+          <span class="form-text">Supported columns: <strong>Name, Phone, Email, Channel, Product, Notes</strong></span>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Upload & Process Import
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Format Instructions -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Spreadsheet Instructions</h3>
+    </div>
+    <div class="crm-card-body" style="font-size: 0.875rem; line-height: 1.6;">
+      <ul style="padding-left: 20px; color: var(--text-muted);">
+        <li>Ensure row 1 contains headers: <code>name</code>, <code>phone</code>, <code>email</code>, <code>channel</code>, <code>product</code>, <code>notes</code>.</li>
+        <li><strong>Name</strong> and <strong>Phone</strong> are strictly required. Rows missing these will be rejected.</li>
+        <li>Duplicate phone numbers already in the database will be skipped and recorded in the failure count.</li>
+        <li>Channel and Product names are matched case-insensitively with your existing setup.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Import History Table -->
+<div class="crm-card">
+  <div class="crm-card-header">
+    <h3>Recent Import History</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>File Name</th>
+          <th>Uploaded By</th>
+          <th>Uploaded On</th>
+          <th>Total Records</th>
+          <th>Successful</th>
+          <th>Failed</th>
+          <th>Status</th>
+          <th>Error Log</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for hist in import_history %}
+        <tr>
+          <td><strong>{{ hist.file_name }}</strong></td>
+          <td>{{ hist.uploaded_by.username }}</td>
+          <td>{{ hist.uploaded_on|date:"M d, Y H:i" }}</td>
+          <td>{{ hist.records }}</td>
+          <td><span class="badge badge-completed">{{ hist.successful }}</span></td>
+          <td>
+            {% if hist.failed > 0 %}
+            <span class="badge badge-overdue">{{ hist.failed }}</span>
+            {% else %}
+            <span>0</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {% if hist.failed == 0 %}badge-active{% else %}badge-pending{% endif %}">
+              {{ hist.status }}
+            </span>
+          </td>
+          <td style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ hist.error_log }}">
+            {{ hist.error_log|default:"None" }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8">
+            <div class="empty-state">
+              <p>No lead import jobs recorded yet.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

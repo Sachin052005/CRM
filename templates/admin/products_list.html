@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Products - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Products & Courses</h1>
+    <p>Manage training programs, services, and product catalogs</p>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+  <!-- Products Table -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>All Products & Offerings</h3>
+      <form method="GET" style="display: flex; gap: 8px;">
+        <input type="text" name="search" class="form-control" style="width: 180px; padding: 4px 10px; font-size: 0.8rem;" placeholder="Search products..." value="{{ search_query }}">
+        <select name="status" class="form-select" style="width: 110px; padding: 4px 8px; font-size: 0.8rem;" onchange="this.form.submit()">
+          <option value="">All</option>
+          <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>Active</option>
+          <option value="Inactive" {% if status_filter == 'Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+      </form>
+    </div>
+
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Price</th>
+            <th>Lead Count</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for prod in page_obj %}
+          <tr>
+            <td>
+              <strong>{{ prod.name }}</strong>
+              {% if prod.description %}
+              <div style="font-size: 0.75rem; color: var(--text-muted);">{{ prod.description|truncatechars:60 }}</div>
+              {% endif %}
+            </td>
+            <td><strong>₹{{ prod.price }}</strong></td>
+            <td><span class="badge badge-manager">{{ prod.lead_count }} leads</span></td>
+            <td>
+              {% if prod.status == 'Active' %}
+              <span class="badge badge-active">Active</span>
+              {% else %}
+              <span class="badge badge-inactive">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ prod.created_at|date:"M d, Y" }}</td>
+            <td style="text-align: right;">
+              <a href="{% url 'admin_product_edit' prod.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'admin_product_toggle_status' prod.pk %}" class="btn btn-sm {% if prod.status == 'Active' %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change status?">
+                {% if prod.status == 'Active' %}Deactivate{% else %}Activate{% endif %}
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                </div>
+                <h4>No Products Found</h4>
+                <p>Add your first educational course or product using the form.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Product Card -->
+  <div class="crm-card" style="height: fit-content;">
+    <div class="crm-card-header">
+      <h3>Add Product</h3>
+    </div>
+    <div class="crm-card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <div class="form-group">
+          <label class="form-label">Product Name <span class="required">*</span></label>
+          {{ form.name }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          {{ form.description }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fee / Price (₹)</label>
+          {{ form.price }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          {{ form.status }}
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Save Product</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

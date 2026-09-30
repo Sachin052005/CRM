@@ -1,0 +1,658 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configuration - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+  <div class="page-title-group">
+    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">CONFIGURATION</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Manage connections that automatically fetch leads into the CRM.</p>
+  </div>
+  <div class="page-actions">
+    <button type="button" class="btn btn-primary" onclick="openAddConnectionModal()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 9px 18px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      + Add Connection
+    </button>
+  </div>
+</div>
+
+<!-- SECTION: CONNECTED SOURCES -->
+<div style="margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: 0.01em;">CONNECTED SOURCES</h2>
+      <span class="badge" style="background: #e0f2fe; color: #0284c7; font-weight: 600; font-size: 0.775rem; padding: 3px 8px; border-radius: 9999px;">
+        {{ connections.count }} Configured
+      </span>
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px;">
+      <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #10b981;"></span>
+      Automated Lead Ingestion Engine Active
+    </div>
+  </div>
+
+  <!-- CONNECTIONS GRID -->
+  <div class="connections-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px;">
+    {% for conn in connections %}
+    <div class="crm-card" id="connectionCard-{{ conn.id }}" style="padding: 22px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; background: var(--bg-card); transition: box-shadow 0.2s ease;">
+      <div>
+        <!-- Card Header: Title & Status -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower %}background: #e0e7ff; color: #4338ca;{% elif 'website' in conn.name|lower %}background: #ecfdf5; color: #059669;{% elif 'sheet' in conn.name|lower %}background: #ecfdf5; color: #16a34a;{% else %}background: #eff6ff; color: #2563eb;{% endif %}">
+              {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower %}
+              <!-- Meta / Facebook Icon -->
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              {% elif 'website' in conn.name|lower %}
+              <!-- Globe / Website Icon -->
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              {% elif 'sheet' in conn.name|lower %}
+              <!-- Google Sheets Icon -->
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              {% else %}
+              <!-- General Source Icon -->
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+              {% endif %}
+            </div>
+            <div>
+              <h3 id="cardTitle-{{ conn.id }}" style="font-size: 1.125rem; font-weight: 700; color: var(--text-main); margin: 0;">
+                {{ conn.name }}
+              </h3>
+              <span style="font-size: 0.775rem; color: var(--text-muted);">
+                {{ conn.connection_type }} Integration
+              </span>
+            </div>
+          </div>
+
+          <!-- Status Indicator -->
+          <div id="statusBadgeContainer-{{ conn.id }}">
+            {% if conn.status == 'Connected' %}
+            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 600; font-size: 0.8rem; padding: 5px 12px; border-radius: 9999px; border: 1px solid #bbf7d0; display: inline-flex; align-items: center; gap: 5px;">
+              🟢 Connected
+            </span>
+            {% elif conn.status == 'Disconnected' %}
+            <span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: 600; font-size: 0.8rem; padding: 5px 12px; border-radius: 9999px; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 5px;">
+              🔴 Disconnected
+            </span>
+            {% else %}
+            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: 600; font-size: 0.8rem; padding: 5px 12px; border-radius: 9999px; border: 1px solid #fde68a;">
+              ⚠️ {{ conn.status }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Connection Details Body -->
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 14px; font-size: 0.875rem;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+              {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower or conn.page_name %}
+              <tr style="border-bottom: 1px solid #edf2f7;">
+                <td style="padding: 6px 0; color: var(--text-muted); width: 110px;">Page:</td>
+                <td style="padding: 6px 0; font-weight: 600; color: var(--text-main);" id="cardPage-{{ conn.id }}">
+                  {{ conn.page_name|default:"TechPanda Academy" }}
+                </td>
+              </tr>
+              {% endif %}
+
+              <tr style="border-bottom: 1px solid #edf2f7;">
+                <td style="padding: 6px 0; color: var(--text-muted); width: 110px;">
+                  {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower %}Lead Source:{% else %}Source:{% endif %}
+                </td>
+                <td style="padding: 6px 0; font-weight: 600; color: var(--text-main);" id="cardSource-{{ conn.id }}">
+                  {{ conn.source_name }}
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding: 6px 0; color: var(--text-muted);">Last Sync:</td>
+                <td style="padding: 6px 0; font-weight: 700; color: #0f172a; font-family: monospace;" id="cardLastSync-{{ conn.id }}">
+                  {{ conn.last_sync_display|default:"Never" }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Webhook Info Pill -->
+        {% if conn.webhook_url %}
+        <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px dashed var(--border-color); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 0.75rem; color: var(--text-muted);">
+          <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;">
+            <span style="font-weight: 600; color: #475569;">Webhook:</span> {{ conn.webhook_url }}
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="copyWebhook('{{ conn.webhook_url|escapejs }}')" style="padding: 2px 7px; font-size: 0.7rem; flex-shrink: 0;" title="Copy Webhook URL">
+            Copy
+          </button>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color); flex-wrap: wrap;">
+        <!-- Manage Button -->
+        {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower or conn.connection_type == 'Meta' %}
+        <a href="{% url 'admin_meta_manage' conn.id %}" class="btn btn-secondary btn-sm" style="font-weight: 600; padding: 6px 14px; text-decoration: none; display: inline-flex; align-items: center;">
+          Manage
+        </a>
+        {% else %}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openManageModal({{ conn.id }})" style="font-weight: 600; padding: 6px 14px;">
+          Manage
+        </button>
+        {% endif %}
+
+        <!-- Sync Now Button -->
+        <button type="button" class="btn btn-primary btn-sm" id="btnSync-{{ conn.id }}" onclick="syncConnection({{ conn.id }}, '{{ conn.name|escapejs }}')" style="font-weight: 600; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;">
+          <svg id="syncIcon-{{ conn.id }}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          <span id="syncText-{{ conn.id }}">Sync Now</span>
+        </button>
+
+        <!-- Disconnect / Connect Button -->
+        <button type="button" class="btn btn-secondary btn-sm" id="btnToggle-{{ conn.id }}" onclick="toggleDisconnect({{ conn.id }}, '{{ conn.name|escapejs }}')" style="font-weight: 600; padding: 6px 14px; color: {% if conn.status == 'Connected' %}#dc2626{% else %}#16a34a{% endif %};">
+          {% if conn.status == 'Connected' %}Disconnect{% else %}Connect{% endif %}
+        </button>
+      </div>
+    </div>
+    {% empty %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 48px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color);">
+      <h4 style="font-weight: 600; color: var(--text-main); margin-bottom: 6px;">No Lead Connections Found</h4>
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 16px;">Set up automatic lead synchronization by clicking + Add Connection.</p>
+      <button type="button" class="btn btn-primary" onclick="openAddConnectionModal()">+ Add Connection</button>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: ADD CONNECTION                      -->
+<!-- ========================================== -->
+<div id="addConnectionModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+  <div style="background: var(--bg-card); width: 100%; max-width: 540px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); overflow: hidden; border: 1px solid var(--border-color); margin: 20px;">
+    <div style="padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: #dbeafe; color: #1d4ed8; display: flex; align-items: center; justify-content: center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </div>
+        <h3 style="font-size: 1.125rem; font-weight: 700; margin: 0; color: var(--text-main);">Add Lead Connection</h3>
+      </div>
+      <button type="button" onclick="closeAddConnectionModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1;">&times;</button>
+    </div>
+
+    <form method="POST" action="{% url 'admin_configuration_add' %}" id="addConnectionForm" style="padding: 24px;">
+      {% csrf_token %}
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Connection Type <span style="color: #ef4444;">*</span></label>
+          <select name="connection_type" id="addConnType" class="form-select" onchange="handleTypeChange(this.value)" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <option value="Meta">Meta / Facebook</option>
+            <option value="Website">Website</option>
+            <option value="Google Sheets">Google Sheets</option>
+            <option value="WhatsApp">WhatsApp</option>
+            <option value="Webhook">Custom Webhook</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Connection Name <span style="color: #ef4444;">*</span></label>
+          <input type="text" name="name" id="addConnName" class="form-control" placeholder="e.g. Meta / Facebook" required style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div id="addPageField">
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Page / Account Name</label>
+          <input type="text" name="page_name" id="addPageName" class="form-control" placeholder="e.g. TechPanda Academy" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        </div>
+
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Lead Source Tag <span style="color: #ef4444;">*</span></label>
+          <input type="text" name="source_name" id="addSourceName" class="form-control" placeholder="e.g. Meta or Website Lead Form" required style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Map to CRM Channel</label>
+          <select name="channel_id" class="form-select" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <option value="">-- Auto-detect / Default --</option>
+            {% for ch in channels %}
+            <option value="{{ ch.id }}">{{ ch.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Scope to Branch (Optional)</label>
+          <select name="branch_id" class="form-select" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <option value="">All Branches (Global)</option>
+            {% for br in branches %}
+            <option value="{{ br.id }}">{{ br.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Incoming Webhook URL (Optional)</label>
+        <input type="text" name="webhook_url" id="addWebhookUrl" class="form-control" placeholder="https://crm.techpanda.academy/api/webhooks/meta-lead-ads/" style="width: 100%; padding: 8px 10px; font-size: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: monospace;">
+        <div style="font-size: 0.725rem; color: var(--text-muted); margin-top: 4px;">Leave blank to use the CRM default endpoint automatically.</div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="closeAddConnectionModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="font-weight: 600; padding: 8px 20px;">Save Connection</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: MANAGE CONNECTION                   -->
+<!-- ========================================== -->
+<div id="manageConnectionModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+  <div style="background: var(--bg-card); width: 100%; max-width: 540px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); overflow: hidden; border: 1px solid var(--border-color); margin: 20px;">
+    <div style="padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: #f1f5f9; color: #334155; display: flex; align-items: center; justify-content: center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </div>
+        <h3 id="manageModalTitle" style="font-size: 1.125rem; font-weight: 700; margin: 0; color: var(--text-main);">Manage Connection</h3>
+      </div>
+      <button type="button" onclick="closeManageModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1;">&times;</button>
+    </div>
+
+    <form id="manageConnectionForm" method="POST" onsubmit="submitManageForm(event)" style="padding: 24px;">
+      {% csrf_token %}
+      <input type="hidden" id="manageConnId" name="conn_id">
+
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Connection Name <span style="color: #ef4444;">*</span></label>
+          <input type="text" name="name" id="manageConnName" class="form-control" required style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        </div>
+
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Status</label>
+          <select name="status" id="manageStatus" class="form-select" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <option value="Connected">Connected</option>
+            <option value="Disconnected">Disconnected</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div id="managePageContainer">
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Page / Account</label>
+          <input type="text" name="page_name" id="managePageName" class="form-control" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        </div>
+
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Lead Source Tag</label>
+          <input type="text" name="source_name" id="manageSourceName" class="form-control" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">CRM Channel</label>
+          <select name="channel_id" id="manageChannelId" class="form-select" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <option value="">-- No specific channel --</option>
+            {% for ch in channels %}
+            <option value="{{ ch.id }}">{{ ch.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Branch Routing</label>
+          <select name="branch_id" id="manageBranchId" class="form-select" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <option value="">All Branches</option>
+            {% for br in branches %}
+            <option value="{{ br.id }}">{{ br.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Webhook Endpoint</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" name="webhook_url" id="manageWebhookUrl" class="form-control" style="flex: 1; padding: 8px 10px; font-size: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: monospace;">
+          <button type="button" class="btn btn-secondary" onclick="copyWebhook(document.getElementById('manageWebhookUrl').value)" style="flex-shrink: 0; padding: 8px 12px; font-size: 0.8rem;">
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="closeManageModal()">Cancel</button>
+        <button type="submit" id="btnSaveManage" class="btn btn-primary" style="font-weight: 600; padding: 8px 20px;">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- FLOATING TOAST NOTIFICATION                -->
+<!-- ========================================== -->
+<div id="statusToast" style="display: none; position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #fff; padding: 14px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 2000; font-size: 0.875rem; align-items: center; gap: 12px; border-left: 4px solid #10b981; min-width: 280px; max-width: 420px; animation: slideIn 0.3s ease;">
+  <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; flex-shrink: 0;"></span>
+    <span id="toastMsg" style="flex: 1; line-height: 1.4;">Notification</span>
+    <button type="button" onclick="document.getElementById('statusToast').style.display='none'" style="background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; line-height: 1;">&times;</button>
+  </div>
+</div>
+
+<style>
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spinning {
+  animation: spin 1s linear infinite;
+}
+</style>
+
+<script>
+// ==========================================
+// TOAST NOTIFICATION HELPER
+// ==========================================
+let toastTimer = null;
+function showToast(message, isError = false) {
+  const toast = document.getElementById('statusToast');
+  const txt = document.getElementById('toastMsg');
+  if (toast && txt) {
+    txt.textContent = message;
+    toast.style.borderLeftColor = isError ? '#ef4444' : '#10b981';
+    toast.style.display = 'flex';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.style.display = 'none';
+    }, 4500);
+  }
+}
+
+// ==========================================
+// CSRF HELPER
+// ==========================================
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// ==========================================
+// CLIPBOARD COPY HELPER
+// ==========================================
+function copyWebhook(url) {
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Webhook URL copied to clipboard!');
+  }).catch(() => {
+    showToast('Failed to copy webhook URL.', true);
+  });
+}
+
+// ==========================================
+// ADD CONNECTION MODAL
+// ==========================================
+function openAddConnectionModal() {
+  document.getElementById('addConnectionModal').style.display = 'flex';
+}
+
+function closeAddConnectionModal() {
+  document.getElementById('addConnectionModal').style.display = 'none';
+}
+
+function handleTypeChange(val) {
+  const nameInput = document.getElementById('addConnName');
+  const pageInput = document.getElementById('addPageName');
+  const sourceInput = document.getElementById('addSourceName');
+  const webhookInput = document.getElementById('addWebhookUrl');
+
+  if (val === 'Meta') {
+    if (!nameInput.value || nameInput.value.includes('Connection')) nameInput.value = 'Meta / Facebook';
+    pageInput.value = 'TechPanda Academy';
+    sourceInput.value = 'Meta';
+    webhookInput.placeholder = 'https://crm.techpanda.academy/api/webhooks/meta-lead-ads/';
+  } else if (val === 'Website') {
+    if (!nameInput.value || nameInput.value.includes('Connection')) nameInput.value = 'Website';
+    pageInput.value = '';
+    sourceInput.value = 'Website Lead Form';
+    webhookInput.placeholder = 'https://crm.techpanda.academy/api/webhooks/website-lead-form/';
+  } else if (val === 'Google Sheets') {
+    if (!nameInput.value || nameInput.value.includes('Connection')) nameInput.value = 'Google Sheets Leads';
+    pageInput.value = '';
+    sourceInput.value = 'Google Sheets';
+    webhookInput.placeholder = '';
+  } else {
+    if (!nameInput.value) nameInput.value = val + ' Connection';
+    sourceInput.value = val;
+  }
+}
+
+// ==========================================
+// MANAGE CONNECTION MODAL
+// ==========================================
+function openManageModal(connId) {
+  fetch(`/admin/configuration/${connId}/manage/`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById('manageConnId').value = data.id;
+    document.getElementById('manageConnName').value = data.name || '';
+    document.getElementById('manageStatus').value = data.status || 'Connected';
+    document.getElementById('managePageName').value = data.page_name || '';
+    document.getElementById('manageSourceName').value = data.source_name || '';
+    document.getElementById('manageChannelId').value = data.channel_id || '';
+    document.getElementById('manageBranchId').value = data.branch_id || '';
+    document.getElementById('manageWebhookUrl').value = data.webhook_url || '';
+    document.getElementById('manageModalTitle').textContent = `Manage: ${data.name}`;
+
+    document.getElementById('manageConnectionModal').style.display = 'flex';
+  })
+  .catch(err => {
+    showToast('Failed to load connection details.', true);
+  });
+}
+
+function closeManageModal() {
+  document.getElementById('manageConnectionModal').style.display = 'none';
+}
+
+function submitManageForm(e) {
+  e.preventDefault();
+  const connId = document.getElementById('manageConnId').value;
+  const form = document.getElementById('manageConnectionForm');
+  const formData = new FormData(form);
+  const btn = document.getElementById('btnSaveManage');
+  btn.disabled = true;
+
+  fetch(`/admin/configuration/${connId}/manage/`, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': getCookie('csrftoken')
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    closeManageModal();
+    showToast(data.message || 'Connection updated successfully!');
+
+    // Update in-page card UI dynamically
+    const titleEl = document.getElementById(`cardTitle-${connId}`);
+    if (titleEl && data.name) titleEl.textContent = data.name;
+
+    const pageEl = document.getElementById(`cardPage-${connId}`);
+    if (pageEl && data.page_name !== undefined) pageEl.textContent = data.page_name || 'TechPanda Academy';
+
+    const sourceEl = document.getElementById(`cardSource-${connId}`);
+    if (sourceEl && data.source_name) sourceEl.textContent = data.source_name;
+
+    // Refresh page briefly after 800ms to reflect changes cleanly
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
+  })
+  .catch(err => {
+    btn.disabled = false;
+    showToast('Error saving changes: ' + err, true);
+  });
+}
+
+// ==========================================
+// LIVE SYNC NOW
+// ==========================================
+function syncConnection(connId, connName) {
+  const btn = document.getElementById(`btnSync-${connId}`);
+  const icon = document.getElementById(`syncIcon-${connId}`);
+  const text = document.getElementById(`syncText-${connId}`);
+
+  if (btn) btn.disabled = true;
+  if (icon) icon.classList.add('spinning');
+  if (text) text.textContent = 'Syncing...';
+
+  fetch(`/admin/configuration/${connId}/sync/`, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': getCookie('csrftoken')
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (btn) btn.disabled = false;
+    if (icon) icon.classList.remove('spinning');
+    if (text) text.textContent = 'Sync Now';
+
+    if (data.success) {
+      showToast(data.message || `Synced '${connName}' successfully!`);
+      const syncEl = document.getElementById(`cardLastSync-${connId}`);
+      if (syncEl && data.last_sync) {
+        syncEl.textContent = data.last_sync;
+        syncEl.style.transition = 'color 0.3s ease';
+        syncEl.style.color = '#15803d';
+        setTimeout(() => { syncEl.style.color = '#0f172a'; }, 1500);
+      }
+
+      // If card was disconnected, sync reconnects it
+      const badgeBox = document.getElementById(`statusBadgeContainer-${connId}`);
+      if (badgeBox && data.status === 'Connected') {
+        badgeBox.innerHTML = `
+          <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 600; font-size: 0.8rem; padding: 5px 12px; border-radius: 9999px; border: 1px solid #bbf7d0; display: inline-flex; align-items: center; gap: 5px;">
+            🟢 Connected
+          </span>
+        `;
+      }
+      const toggleBtn = document.getElementById(`btnToggle-${connId}`);
+      if (toggleBtn) {
+        toggleBtn.textContent = 'Disconnect';
+        toggleBtn.style.color = '#dc2626';
+      }
+    } else {
+      showToast(data.error || 'Sync failed.', true);
+    }
+  })
+  .catch(err => {
+    if (btn) btn.disabled = false;
+    if (icon) icon.classList.remove('spinning');
+    if (text) text.textContent = 'Sync Now';
+    showToast('Sync request error: ' + err, true);
+  });
+}
+
+// ==========================================
+// TOGGLE DISCONNECT / CONNECT
+// ==========================================
+function toggleDisconnect(connId, connName) {
+  const btn = document.getElementById(`btnToggle-${connId}`);
+  if (btn) btn.disabled = true;
+
+  fetch(`/admin/configuration/${connId}/disconnect/`, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': getCookie('csrftoken')
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (btn) btn.disabled = false;
+
+    if (data.success) {
+      showToast(data.message || `Connection '${connName}' status updated!`);
+
+      const badgeBox = document.getElementById(`statusBadgeContainer-${connId}`);
+      if (badgeBox) {
+        if (data.status === 'Connected') {
+          badgeBox.innerHTML = `
+            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 600; font-size: 0.8rem; padding: 5px 12px; border-radius: 9999px; border: 1px solid #bbf7d0; display: inline-flex; align-items: center; gap: 5px;">
+              🟢 Connected
+            </span>
+          `;
+          if (btn) {
+            btn.textContent = 'Disconnect';
+            btn.style.color = '#dc2626';
+          }
+        } else {
+          badgeBox.innerHTML = `
+            <span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: 600; font-size: 0.8rem; padding: 5px 12px; border-radius: 9999px; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 5px;">
+              🔴 Disconnected
+            </span>
+          `;
+          if (btn) {
+            btn.textContent = 'Connect';
+            btn.style.color = '#16a34a';
+          }
+        }
+      }
+
+      if (data.last_sync) {
+        const syncEl = document.getElementById(`cardLastSync-${connId}`);
+        if (syncEl) syncEl.textContent = data.last_sync;
+      }
+    } else {
+      showToast(data.error || 'Failed to update connection status.', true);
+    }
+  })
+  .catch(err => {
+    if (btn) btn.disabled = false;
+    showToast('Status update error: ' + err, true);
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}My Activity Log - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>My Activity Log</h1>
+    <p>Personal audit trail of your calls, follow-up completions, and lead updates</p>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Action</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in page_obj %}
+        <tr>
+          <td>{{ a.timestamp|date:"M d, Y H:i:s" }}</td>
+          <td><strong>{{ a.action }}</strong></td>
+          <td>{{ a.description }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3">
+            <div class="empty-state"><p>No activity records logged.</p></div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

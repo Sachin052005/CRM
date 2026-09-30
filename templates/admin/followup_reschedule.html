@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Reschedule Follow-up - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <div>
+    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Reschedule Follow-up</h1>
+    <p style="color: var(--text-muted); font-size: 0.875rem;">
+      Adjust follow-up callback date for <strong>{{ followup.lead.name }}</strong> ({{ followup.lead.phone }})
+    </p>
+  </div>
+  <a href="{% url 'admin_followups_list' %}" class="btn btn-secondary">&larr; Back to Follow-ups</a>
+</div>
+
+<div style="max-width: 580px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 28px; box-shadow: var(--shadow-sm);">
+  <div style="background: var(--bg-body); padding: 14px 18px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 0.875rem;">
+    <div><strong>Current Due Date:</strong> {{ followup.follow_up_date }} {% if followup.follow_up_time %}({{ followup.follow_up_time }}){% endif %}</div>
+    <div><strong>Current Status:</strong> {{ followup.status }}</div>
+    <div><strong>Manager:</strong> {% if followup.manager %}{{ followup.manager.get_full_name|default:followup.manager.username }}{% else %}Unassigned{% endif %}</div>
+    <div><strong>Telecaller:</strong> {% if followup.telecaller %}{{ followup.telecaller.get_full_name|default:followup.telecaller.username }}{% else %}Unassigned{% endif %}</div>
+  </div>
+
+  <form method="POST">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 0.875rem;">
+      {% for error in form.non_field_errors %}
+      <div>{{ error }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+      <div class="form-group">
+        <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px;">New Follow-up Date *</label>
+        {{ form.follow_up_date }}
+        {% if form.follow_up_date.errors %}<div style="color: #ef4444; font-size: 0.8rem; margin-top: 4px;">{{ form.follow_up_date.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px;">New Follow-up Time</label>
+        {{ form.follow_up_time }}
+        {% if form.follow_up_time.errors %}<div style="color: #ef4444; font-size: 0.8rem; margin-top: 4px;">{{ form.follow_up_time.errors|striptags }}</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 20px;">
+      <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px;">Rescheduling Notes / Reason</label>
+      {{ form.notes }}
+      {% if form.notes.errors %}<div style="color: #ef4444; font-size: 0.8rem; margin-top: 4px;">{{ form.notes.errors|striptags }}</div>{% endif %}
+    </div>
+
+    <div style="display: flex; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+      <button type="submit" class="btn btn-primary" style="font-weight: 600;">Confirm Reschedule</button>
+      <a href="{% url 'admin_followups_list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

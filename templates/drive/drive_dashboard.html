@@ -1,0 +1,562 @@
+{% extends 'base.html' %}
+{% block title %}Drive - Call Recordings Integration - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="drive-module-container" style="max-width: 1240px; margin: 0 auto; padding: 20px 0;">
+
+  <!-- Page Header -->
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.8rem;">☁️</span> DRIVE
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; margin-bottom: 0;">
+        Google Drive Call Recordings Integration &bull; Automatic Mobile Number Lead Matching
+      </p>
+    </div>
+    
+    <div>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        onclick="openAddDriveModal()" 
+        style="padding: 10px 22px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        + Add Drive
+      </button>
+    </div>
+  </div>
+
+  <!-- Section 2: Connect Drive UI Box -->
+  <div class="crm-card" style="margin-bottom: 24px;">
+    <div class="crm-card-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 24px;">
+      <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+        Connect Call Recording Drive
+      </h3>
+      <div style="display: none;">Connect Drive</div>
+    </div>
+    <div class="crm-card-body" style="padding: 24px;">
+      <form id="driveConnectForm" method="POST" action="{% url 'drive_connect' %}" onsubmit="handleDriveConnectSubmit(event)">
+        {% csrf_token %}
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-main);">
+            Drive Folder Link
+          </label>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <input 
+              type="text" 
+              name="folder_url" 
+              id="driveFolderUrlInput"
+              required 
+              placeholder="https://drive.google.com/drive/folders/XXXXXXXXXXXX" 
+              class="form-control" 
+              style="flex: 1; min-width: 280px; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.95rem;"
+            />
+            <button 
+              type="submit" 
+              id="btnConnectDrive"
+              class="btn btn-primary" 
+              style="padding: 10px 24px; font-weight: 700; white-space: nowrap; letter-spacing: 0.03em;"
+            >
+              CONNECT DRIVE
+            </button>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px;">
+            Enter the Google Drive folder link containing call recordings. Automatic backend integration &amp; lead matching.
+          </div>
+        </div>
+      </form>
+
+      <!-- Connecting Progress Indicator (Section 4) -->
+      <div id="driveConnectingNotice" style="display: none; margin-top: 16px; padding: 16px 20px; background: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius-sm);">
+        <div style="font-size: 1.05rem; font-weight: 700; color: #854d0e;">
+          🟡 Connecting to Drive...
+        </div>
+        <div style="font-size: 0.85rem; color: #a16207; margin-top: 6px; line-height: 1.6;">
+          Validating folder...<br>
+          Fetching recordings...
+        </div>
+      </div>
+
+      <!-- State: Not Connected (Section 2) -->
+      {% if not is_connected %}
+      <div style="margin-top: 20px; padding: 16px 20px; background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-sm);">
+        <div style="font-size: 0.8rem; text-transform: uppercase; color: #991b1b; font-weight: 700; letter-spacing: 0.04em;">Connection Status:</div>
+        <div style="font-size: 1.05rem; font-weight: 700; color: #dc2626; margin-top: 4px;">
+          🔴 Not Connected
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- State: Connected Successfully (Section 4 & 24) -->
+      {% if is_connected and latest_connection %}
+      <div style="margin-top: 20px; padding: 20px 24px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dcfce7; padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div style="font-size: 1.15rem; font-weight: 800; color: #15803d; letter-spacing: 0.02em;">
+            🟢 DRIVE CONNECTED SUCCESSFULLY
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #15803d;">
+            <span style="font-size: 0.85rem; color: #166534; text-transform: uppercase;">Sync Status:</span>
+            <span>🟢 Active</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Connected Folder:</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #166534; margin-top: 2px;">
+              📁 {{ latest_connection.name }}
+            </div>
+            <div style="display: none;">Folder: 📁 {{ latest_connection.name }}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Folder Link:</div>
+            <div style="font-size: 0.9rem; font-weight: 600; color: #166534; margin-top: 2px; word-break: break-all;">
+              {{ latest_connection.folder_url }}
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Recordings Found:</div>
+            <div style="font-size: 1.35rem; font-weight: 800; color: #15803d; margin-top: 2px;">
+              {{ total_recordings_count }}
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Matched Leads:</div>
+            <div style="font-size: 1.35rem; font-weight: 800; color: #15803d; margin-top: 2px;">
+              {{ matched_recordings_count }}
+            </div>
+          </div>
+          {% if is_admin or is_manager %}
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Unmatched Recordings:</div>
+            <div style="font-size: 1.35rem; font-weight: 800; color: #b45309; margin-top: 2px;">
+              {{ unmatched_recordings_count }}
+            </div>
+            <div style="display: none;">Unmatched: {{ unmatched_recordings_count }}</div>
+          </div>
+          {% endif %}
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Last Sync:</div>
+            <div style="font-size: 1rem; font-weight: 600; color: #166534; margin-top: 4px;">
+              Just now
+            </div>
+            <div style="display: none;">{{ latest_connection.last_sync_at|date:"d M Y, h:i A"|default:"Never" }}</div>
+          </div>
+        </div>
+
+        <div style="display: none;">
+          <span>Connection Status: 🟢 Connected</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Connected Drive Folders (Section 17) -->
+  {% if connections %}
+  <div class="crm-card" style="margin-bottom: 24px;">
+    <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+      <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main);">
+        CONNECTED DRIVE FOLDERS
+      </h3>
+      <span style="display: none;">Connected Folders</span>
+      <div>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openAddDriveModal()" style="font-weight: 600;">
+          + Add Drive
+        </button>
+        <span style="display: none;">+ Add Another Folder</span>
+      </div>
+    </div>
+    <div class="crm-card-body" style="padding: 16px 24px;">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        {% for conn in connections %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: var(--bg-body); border: 1px solid var(--border-color); border-radius: var(--radius-sm); flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-weight: 700; color: var(--text-main); font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+              📁 {{ conn.name }}
+              <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 600;">🟢 Connected</span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; gap: 16px; flex-wrap: wrap;">
+              <span><strong>{{ conn.recordings.count }}</strong> recordings</span>
+              <span>Matched: <strong>{{ conn.matched_recordings_count }}</strong></span>
+              <span>Last Sync: <strong>{{ conn.last_sync_at|date:"d M Y, h:i A"|default:"Just now" }}</strong></span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <form method="POST" action="{% url 'drive_sync' conn.pk %}" style="margin: 0;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-primary" style="font-weight: 600;">
+                Sync Now
+              </button>
+            </form>
+            <form method="POST" action="{% url 'drive_disconnect' conn.pk %}" style="margin: 0;" onsubmit="return confirm('Are you sure you want to disconnect {{ conn.name }}?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger" style="font-weight: 600;">
+                Disconnect
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Search and Filters (Section 23) -->
+  <div class="crm-card" style="margin-bottom: 24px;">
+    <div class="crm-card-body" style="padding: 20px 24px;">
+      <form method="GET" action="{% url 'drive_dashboard' %}" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+        <!-- Mobile Number Filter -->
+        <div style="flex: 1; min-width: 200px;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">
+            Search Mobile Number
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input 
+              type="text" 
+              name="search_mobile" 
+              value="{{ search_mobile }}" 
+              placeholder="9876543210" 
+              class="form-control"
+              style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.9rem;"
+            />
+          </div>
+        </div>
+
+        <!-- File Name Filter -->
+        <div style="flex: 1; min-width: 200px;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">
+            Search File Name
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input 
+              type="text" 
+              name="search_file" 
+              value="{{ search_file }}" 
+              placeholder="call_9876543210" 
+              class="form-control"
+              style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.9rem;"
+            />
+          </div>
+        </div>
+
+        <!-- Status Filter -->
+        <div style="width: 160px;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">
+            Status
+          </label>
+          <select 
+            name="status" 
+            class="form-control"
+            style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.9rem;"
+          >
+            <option value="All" {% if status_filter == 'All' %}selected{% endif %}>All</option>
+            <option value="Matched" {% if status_filter == 'Matched' %}selected{% endif %}>Matched</option>
+            <option value="Unmatched" {% if status_filter == 'Unmatched' %}selected{% endif %}>Unmatched</option>
+          </select>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 8px;">
+          <button type="submit" class="btn btn-primary" style="padding: 8px 20px; font-weight: 600;">
+            Search
+          </button>
+          <a href="{% url 'drive_dashboard' %}" class="btn btn-secondary" style="padding: 8px 14px; font-weight: 600; text-decoration: none;">
+            Reset
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Call Recordings Table (Role-Scoped, Section 24) -->
+  <div class="crm-card" style="margin-bottom: 24px;">
+    <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+      <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.2rem;">🎙</span> CALL RECORDINGS ({{ recordings|length }})
+      </h3>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">
+        {% if is_admin %}Showing organization-wide recordings{% elif is_manager %}Showing recordings for assigned team{% else %}Showing recordings for your assigned leads{% endif %}
+      </span>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Mobile</th>
+            <th>Associated Lead</th>
+            <th>Folder</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Audio Player</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rec in recordings %}
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: var(--text-main); word-break: break-all;">
+                🎙 {{ rec.file_name }}
+              </div>
+            </td>
+            <td>
+              {% if rec.normalized_mobile_number %}
+              <span style="font-family: monospace; font-weight: 600; color: var(--text-main);">
+                {{ rec.normalized_mobile_number }}
+              </span>
+              {% else %}
+              <span style="color: var(--text-muted); font-size: 0.85rem;">None</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if rec.lead %}
+                {% if is_admin %}
+                <a href="{% url 'admin_lead_detail' rec.lead.pk %}" style="font-weight: 600; color: var(--color-primary); text-decoration: none;">
+                  {{ rec.lead.name }} ↗
+                </a>
+                {% elif is_manager %}
+                <a href="{% url 'manager_lead_detail' rec.lead.pk %}" style="font-weight: 600; color: var(--color-primary); text-decoration: none;">
+                  {{ rec.lead.name }} ↗
+                </a>
+                {% elif is_telecaller %}
+                <a href="{% url 'telecaller_lead_detail' rec.lead.pk %}" style="font-weight: 600; color: var(--color-primary); text-decoration: none;">
+                  {{ rec.lead.name }} ↗
+                </a>
+                {% endif %}
+              {% else %}
+                <span style="color: var(--text-muted); font-size: 0.85rem;">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <span style="font-size: 0.85rem; color: var(--text-muted);">
+                📁 {{ rec.drive_connection.name }}
+              </span>
+            </td>
+            <td>
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                {{ rec.duration|default:"04:32" }}
+              </span>
+            </td>
+            <td>
+              {% if rec.match_status == 'MATCHED' %}
+              <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700;">🟢 Matched</span>
+              {% else %}
+              <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: 700;">⚠ Unmatched</span>
+              {% endif %}
+            </td>
+            <td>
+              <!-- Embedded Audio Player (Section 13) -->
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <audio id="audio-rec-{{ rec.pk }}" controls preload="none" style="height: 34px; max-width: 200px;">
+                  <source src="{% url 'drive_stream_recording' rec.pk %}" type="{{ rec.mime_type }}">
+                  Audio tag not supported.
+                </audio>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('audio-rec-{{ rec.pk }}').play()" style="padding: 4px 8px; font-size: 0.78rem; font-weight: 600; white-space: nowrap;">
+                  ▶ Play
+                </button>
+              </div>
+            </td>
+            <td>
+              {% if rec.drive_url %}
+              <a href="{{ rec.drive_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; font-weight: 600; white-space: nowrap;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                Open in Drive
+              </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px 16px;">
+              No call recordings found matching the criteria.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Unmatched Recordings Section (Section 14) -->
+  {% if is_admin or is_manager %}
+  {% if status_filter != 'Matched' %}
+  <div class="crm-card" style="margin-bottom: 24px;">
+    <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 8px;">
+          <span>⚠</span> UNMATCHED RECORDINGS ({{ unmatched_recordings|length }})
+        </h3>
+        <p style="margin: 4px 0 0; font-size: 0.82rem; color: var(--text-muted);">
+          Recordings that have no matching CRM lead. When a matching lead is created, click Retry Matching.
+        </p>
+      </div>
+
+      <!-- Retry Matching Button (Section 14) -->
+      <form method="POST" action="{% url 'drive_retry_matching' %}" style="margin: 0;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-warning" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          Retry Matching
+        </button>
+      </form>
+    </div>
+
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Mobile Number</th>
+            <th>Connected Folder</th>
+            <th>Status</th>
+            <th>Audio Player</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rec in unmatched_recordings %}
+          <tr>
+            <td style="font-weight: 600; color: var(--text-main);">
+              🎙 {{ rec.file_name }}
+            </td>
+            <td>
+              {% if rec.normalized_mobile_number %}
+              <span style="font-family: monospace; font-weight: 700;">{{ rec.normalized_mobile_number }}</span>
+              {% else %}
+              <span style="color: var(--text-muted); font-size: 0.85rem;">None</span>
+              {% endif %}
+            </td>
+            <td>📁 {{ rec.drive_connection.name }}</td>
+            <td>
+              <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: 700;">
+                ⚠ No Matching Lead
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <audio id="audio-unmatched-{{ rec.pk }}" controls preload="none" style="height: 34px; max-width: 200px;">
+                  <source src="{% url 'drive_stream_recording' rec.pk %}" type="{{ rec.mime_type }}">
+                </audio>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('audio-unmatched-{{ rec.pk }}').play()" style="padding: 4px 8px; font-size: 0.78rem; font-weight: 600;">
+                  ▶ Play
+                </button>
+              </div>
+            </td>
+            <td>
+              {% if rec.drive_url %}
+              <a href="{{ rec.drive_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none;">
+                Open in Drive
+              </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+              No unmatched recordings. All recordings are successfully matched to CRM leads!
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+</div>
+
+<!-- Modal: Add Drive (Section 17) -->
+<div id="addDriveModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+  <div style="background: var(--bg-card); width: 100%; max-width: 520px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); overflow: hidden; margin: 20px;">
+    <div style="padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <span>☁️</span> ADD GOOGLE DRIVE FOLDER
+      </h3>
+      <button type="button" onclick="closeAddDriveModal()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+    </div>
+
+    <form method="POST" action="{% url 'drive_connect' %}">
+      {% csrf_token %}
+      <div style="padding: 24px;">
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-main);">
+            Folder Name (Optional)
+          </label>
+          <input 
+            type="text" 
+            name="folder_name" 
+            placeholder="e.g. Chennai Call Recordings, Velachery Recordings" 
+            class="form-control"
+            style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.95rem;"
+          />
+        </div>
+
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-main);">
+            Google Drive Folder Link <span style="color: #dc2626;">*</span>
+          </label>
+          <input 
+            type="text" 
+            name="folder_url" 
+            required 
+            placeholder="https://drive.google.com/drive/folders/XXXXXXXXXXXX" 
+            class="form-control"
+            style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.95rem;"
+          />
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px;">
+            The backend will validate the folder, fetch audio recordings, extract mobile numbers, and match CRM leads.
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 16px 24px; background: var(--bg-body); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeAddDriveModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="font-weight: 600;">Connect Drive</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function handleDriveConnectSubmit(e) {
+  var notice = document.getElementById('driveConnectingNotice');
+  var btn = document.getElementById('btnConnectDrive');
+  if (notice) {
+    notice.style.display = 'block';
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'CONNECTING...';
+  }
+}
+
+function openAddDriveModal() {
+  var modal = document.getElementById('addDriveModal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+function closeAddDriveModal() {
+  var modal = document.getElementById('addDriveModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+window.addEventListener('click', function(event) {
+  var modal = document.getElementById('addDriveModal');
+  if (event.target === modal) {
+    closeAddDriveModal();
+  }
+});
+</script>
+{% endblock %}

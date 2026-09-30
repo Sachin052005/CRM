@@ -1,0 +1,24 @@
+{% for ld in page_obj %}
+<tr id="lead-row-{{ ld.pk }}" data-status="{{ ld.status }}" data-branch="{% if ld.branch %}{{ ld.branch.name }}{% endif %}" data-telecaller="{% if ld.assigned_telecaller %}{{ ld.assigned_telecaller }}{% endif %}">
+  <td>
+    <strong><a href="{% url 'admin_lead_detail' ld.pk %}" style="color: var(--primary); text-decoration: none;">{{ ld.name }}</a></strong>
+  </td>
+  <td>
+    <div style="font-family: monospace; font-weight: 600; color: #1e293b;">{{ ld.masked_phone|default:ld.phone }}</div>
+  </td>
+  <td>
+    <a href="mailto:{{ ld.email }}" style="color: #475569; text-decoration: none;">{{ ld.email|default:"-" }}</a>
+  </td>
+  <td>
+    <span class="badge" style="background: #f0fdf4; color: #166534; font-weight: 600; font-size: 0.825rem; border: 1px solid #bbf7d0; padding: 4px 10px; border-radius: 6px;">
+      {{ ld.source|default:"Student Enquiries" }}
+    </span>
+  </td>
+</tr>
+{% empty %}
+<tr>
+  <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 36px 16px;">
+    No leads currently displayed. Connect a Google Spreadsheet using <strong>[ + Add Google Sheet ]</strong> to begin live lead fetching.
+  </td>
+</tr>
+{% endfor %}

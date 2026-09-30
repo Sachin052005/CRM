@@ -1,0 +1,368 @@
+{% extends 'base.html' %}
+{% block title %}Leads - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>All Leads</h1>
+    <p>Manage and track all organizational CRM inquiries, allocations, and conversions</p>
+  </div>
+  <div class="page-actions">
+    {% if pending_count > 0 %}
+    <a href="{% url 'admin_retry_pending_assignments' %}" class="btn btn-warning" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: #78350f; background: #fde68a; border: 1px solid #fcd34d;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+      Retry Pending Assignments ({{ pending_count }})
+    </a>
+    {% endif %}
+    <a href="{% url 'admin_duplicate_leads' %}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      Duplicate Leads
+    </a>
+    <a href="{% url 'admin_leads_import' %}" class="btn btn-secondary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      Upload Leads
+    </a>
+    <a href="{% url 'admin_lead_create' %}" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      + Add Lead
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-card">
+  <form method="GET" class="filter-form" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+    <div class="filter-col" style="flex: 2; min-width: 180px;">
+      <label>Search</label>
+      <input type="text" name="search" class="form-control" placeholder="Search name, phone, email, notes..." value="{{ search_query }}">
+    </div>
+    <div class="filter-col" style="min-width: 130px;">
+      <label>Branch</label>
+      <select name="branch" class="form-select">
+        <option value="">All Branches</option>
+        {% for b in branches %}
+        <option value="{{ b.id }}" {% if branch_filter == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="min-width: 130px;">
+      <label>Status</label>
+      <select name="status" class="form-select">
+        <option value="">All Statuses</option>
+        {% for code, label in statuses %}
+        <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="min-width: 140px;">
+      <label>Assignment Status</label>
+      <select name="assignment_status" class="form-select">
+        <option value="">All Assignments</option>
+        {% for code, label in assignment_statuses %}
+        <option value="{{ code }}" {% if assignment_status_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="min-width: 140px;">
+      <label>Spreadsheet</label>
+      <select name="spreadsheet" class="form-select">
+        <option value="">All Spreadsheets</option>
+        {% for cs in connected_spreadsheets %}
+        <option value="{{ cs.id }}" {% if spreadsheet_filter == cs.id|stringformat:"i" %}selected{% endif %}>{{ cs.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="min-width: 130px;">
+      <label>Telecaller</label>
+      <select name="telecaller" class="form-select">
+        <option value="">All Telecallers</option>
+        {% for t in telecallers %}
+        <option value="{{ t.id }}" {% if telecaller_filter == t.id|stringformat:"i" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="min-width: 120px;">
+      <label>Channel</label>
+      <select name="channel" class="form-select">
+        <option value="">All Channels</option>
+        {% for c in channels %}
+        <option value="{{ c.id }}" {% if channel_filter == c.id|stringformat:"i" %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="min-width: 120px;">
+      <label>Product</label>
+      <select name="product" class="form-select">
+        <option value="">All Products</option>
+        {% for p in products %}
+        <option value="{{ p.id }}" {% if product_filter == p.id|stringformat:"i" %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-col" style="min-width: 130px;">
+      <label>From Date</label>
+      <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+    </div>
+    <div class="filter-col" style="min-width: 130px;">
+      <label>To Date</label>
+      <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+    </div>
+    <div style="display: flex; gap: 8px; margin-bottom: 2px;">
+      <button type="submit" class="btn btn-primary" style="font-weight: 600;">Apply</button>
+      <a href="{% url 'admin_leads_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Table -->
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th style="width: 70px;">ID</th>
+          <th>Lead</th>
+          <th>Phone</th>
+          <th>Branch</th>
+          <th>Source / Spreadsheet</th>
+          <th>Status</th>
+          <th>Assignment</th>
+          <th>Manager</th>
+          <th>Telecaller</th>
+          <th>Product</th>
+          <th>Duplicate</th>
+          <th>Created</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ld in page_obj %}
+        <tr>
+          <td>
+            <span style="font-family: monospace; font-weight: 600; color: #64748b;">#{{ ld.id }}</span>
+          </td>
+          <td>
+            <strong><a href="{% url 'admin_lead_detail' ld.pk %}">{{ ld.name }}</a></strong>
+          </td>
+          <td>
+            <a href="tel:{{ ld.phone }}" style="color: inherit; text-decoration: none; font-weight: 500;" title="Click to call {{ ld.phone }}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 2px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              {{ ld.phone }}
+            </a>
+          </td>
+          <td>
+            {% if ld.branch %}
+            <span class="badge" style="background: #f1f5f9; color: #334155; font-size: 0.775rem;">{{ ld.branch.name }}</span>
+            {% else %}
+            <span style="color: var(--text-muted);">-</span>
+            {% endif %}
+          </td>
+          <td>
+            <div>{{ ld.channel.name|default:"-" }}</div>
+            {% for sm in ld.sheet_mappings.all %}
+            <span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.725rem; font-weight: 600; margin-top: 3px; display: inline-block;">
+              📊 {{ sm.connection.name }}
+            </span>
+            {% empty %}
+            {% if ld.source and ld.source != 'Manual Entry' and ld.source != 'Telecaller Entry' %}
+            <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.725rem; margin-top: 3px; display: inline-block;">
+              {{ ld.source }}
+            </span>
+            {% endif %}
+            {% endfor %}
+          </td>
+          <td>
+            <span class="badge badge-{{ ld.status|lower|slugify }}">{{ ld.status }}</span>
+          </td>
+          <td>
+            {% if ld.assignment_status == 'Assigned' %}
+            <span class="badge" style="background: #ecfdf5; color: #047857; font-weight: 600; font-size: 0.775rem;">🟢 Assigned</span>
+            {% elif ld.assignment_status == 'Pending Assignment' %}
+            <span class="badge" style="background: #fef3c7; color: #92400e; font-weight: 600; font-size: 0.775rem;" title="{{ ld.pending_assignment_reason|default:'Awaiting allocation' }}">🟡 Pending</span>
+            {% if ld.pending_assignment_reason %}
+            <div style="font-size: 0.7rem; color: #b45309; max-width: 140px; word-break: break-word;" title="{{ ld.pending_assignment_reason }}">{{ ld.pending_assignment_reason|truncatechars:32 }}</div>
+            {% endif %}
+            {% else %}
+            <span class="badge" style="background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.775rem;">⚪ Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if ld.assigned_manager %}
+            <span>{{ ld.assigned_manager.get_full_name|default:ld.assigned_manager.username }}</span>
+            {% else %}
+            <span style="color: var(--text-muted);">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if ld.assigned_telecaller %}
+            <a href="{% url 'admin_telecaller_detail' ld.assigned_telecaller.pk %}"><strong>{{ ld.assigned_telecaller.get_full_name|default:ld.assigned_telecaller.username }}</strong></a>
+            {% else %}
+            <span style="color: var(--text-muted);">-</span>
+            {% endif %}
+          </td>
+          <td>{{ ld.product.name|default:"-" }}</td>
+          <td>
+            {% if ld.duplicate_records.exists %}
+            <button type="button" class="btn btn-warning btn-sm" onclick="openDuplicateModal('{{ ld.pk }}')" style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; white-space: nowrap;">
+              [ View Duplicate ]
+            </button>
+            {% else %}
+            <span style="color: var(--text-muted); font-weight: 500;">-</span>
+            {% endif %}
+          </td>
+          <td>{{ ld.created_at|date:"M d, Y" }}</td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 4px;">
+              <button type="button" class="btn btn-success btn-sm" onclick="openCallDialer('{{ ld.pk }}', '{{ ld.name|escapejs }}', '{{ ld.phone|escapejs }}')" title="Call Lead">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              </button>
+              <a href="{% url 'admin_lead_detail' ld.pk %}" class="btn btn-secondary btn-sm">View</a>
+              <a href="{% url 'admin_lead_edit' ld.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'admin_lead_delete' ld.pk %}" class="btn btn-outline-danger btn-sm" data-confirm="Are you sure you want to permanently delete this lead?">Del</a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="13">
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+              </div>
+              <h4>No Leads Found</h4>
+              <p>Try modifying your filters or click "Add Lead" or "Import Leads" to populate records.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid var(--border-color); font-size: 0.85rem;">
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    <div style="display: flex; gap: 6px;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&status={{ status_filter }}&manager={{ manager_filter }}&telecaller={{ telecaller_filter }}&branch={{ branch_filter }}&spreadsheet={{ spreadsheet_filter }}&assignment_status={{ assignment_status_filter }}&channel={{ channel_filter }}&product={{ product_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="btn btn-secondary btn-sm">&laquo; Prev</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&status={{ status_filter }}&manager={{ manager_filter }}&telecaller={{ telecaller_filter }}&branch={{ branch_filter }}&spreadsheet={{ spreadsheet_filter }}&assignment_status={{ assignment_status_filter }}&channel={{ channel_filter }}&product={{ product_filter }}&date_from={{ date_from }}&date_to={{ date_to }}" class="btn btn-secondary btn-sm">Next &raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- MODAL: DUPLICATE LEAD DETAILS (10-Day Rule) -->
+<div id="duplicateLeadModal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 1050; align-items: center; justify-content: center; padding: 20px;">
+  <div class="modal-dialog" style="background: #ffffff; border-radius: 12px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); overflow: hidden;">
+    <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #fffbeb;">
+      <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #92400e; letter-spacing: 0.02em;">DUPLICATE LEAD DETAILS</h4>
+      <button type="button" onclick="closeDuplicateModal()" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #94a3b8;">&times;</button>
+    </div>
+    <div id="dupModalBody" style="padding: 20px; font-size: 0.9rem;">
+      <div id="dupLoading" style="text-align: center; padding: 24px; color: var(--text-muted);">
+        Loading duplicate details...
+      </div>
+      <div id="dupContent" style="display: none;">
+        <div style="background: #f8fafc; border-radius: 8px; padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <div style="margin-bottom: 4px;"><strong>Lead:</strong> <span id="dupLeadName" style="color: var(--text-main); font-weight: 600;"></span></div>
+          <div style="margin-bottom: 4px;"><strong>Phone:</strong> <span id="dupLeadPhone" style="font-family: monospace;"></span></div>
+          <div><strong>Email:</strong> <span id="dupLeadEmail"></span></div>
+        </div>
+
+        <div style="margin-bottom: 16px; border-left: 3px solid #3b82f6; padding: 12px 14px; background: #eff6ff; border-radius: 0 8px 8px 0;">
+          <div style="font-weight: 700; font-size: 0.8rem; color: #1e40af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+            ORIGINAL LEAD
+          </div>
+          <div style="margin-bottom: 4px;"><strong>Branch:</strong> <span id="dupOrigBranch"></span></div>
+          <div style="margin-bottom: 4px;"><strong>Submitted:</strong> <span id="dupOrigSubmitted"></span></div>
+          <div><strong>Status:</strong> <span id="dupOrigStatus" class="badge badge-info"></span></div>
+        </div>
+
+        <div style="margin-bottom: 20px; border-left: 3px solid #f59e0b; padding: 12px 14px; background: #fffbeb; border-radius: 0 8px 8px 0;">
+          <div style="font-weight: 700; font-size: 0.8rem; color: #92400e; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+            DUPLICATE RECORD
+          </div>
+          <div id="dupRecordsContainer"></div>
+          <div style="margin-top: 10px; font-weight: 600; color: #b45309; font-size: 0.85rem; padding-top: 8px; border-top: 1px dashed #fde68a;">
+            Same lead details detected within 10 days.
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; pt: 8px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeDuplicateModal()">Close</button>
+          <a id="dupOrigLeadLink" href="#" class="btn btn-primary btn-sm" style="font-weight: 600;">
+            [ View Original Lead ]
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openDuplicateModal(leadId) {
+  const modal = document.getElementById('duplicateLeadModal');
+  const loading = document.getElementById('dupLoading');
+  const content = document.getElementById('dupContent');
+
+  modal.style.display = 'flex';
+  loading.style.display = 'block';
+  content.style.display = 'none';
+
+  fetch(`/admin/leads/${leadId}/duplicate-info/`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    loading.style.display = 'none';
+    if (!data.success) {
+      alert(data.error || 'Failed to load duplicate information.');
+      closeDuplicateModal();
+      return;
+    }
+
+    const ld = data.lead;
+    document.getElementById('dupLeadName').textContent = ld.name;
+    document.getElementById('dupLeadPhone').textContent = ld.phone;
+    document.getElementById('dupLeadEmail').textContent = ld.email || '-';
+    document.getElementById('dupOrigBranch').textContent = ld.branch || '-';
+    document.getElementById('dupOrigSubmitted').textContent = ld.submitted;
+    document.getElementById('dupOrigStatus').textContent = ld.status;
+    document.getElementById('dupOrigLeadLink').href = ld.detail_url;
+
+    const dupContainer = document.getElementById('dupRecordsContainer');
+    dupContainer.innerHTML = '';
+
+    if (data.duplicate_records && data.duplicate_records.length > 0) {
+      data.duplicate_records.forEach((rec, idx) => {
+        const itemDiv = document.createElement('div');
+        itemDiv.style.marginBottom = idx < data.duplicate_records.length - 1 ? '10px' : '0';
+        itemDiv.innerHTML = `
+          <div><strong>Branch:</strong> ${rec.branch || 'N/A'}</div>
+          <div><strong>Submitted:</strong> ${rec.submitted || 'N/A'}</div>
+        `;
+        dupContainer.appendChild(itemDiv);
+      });
+    } else {
+      dupContainer.innerHTML = '<div>No duplicate record entries recorded.</div>';
+    }
+
+    content.style.display = 'block';
+  })
+  .catch(err => {
+    loading.style.display = 'none';
+    alert('Communication error: ' + err);
+    closeDuplicateModal();
+  });
+}
+
+function closeDuplicateModal() {
+  const modal = document.getElementById('duplicateLeadModal');
+  if (modal) modal.style.display = 'none';
+}
+</script>
+{% endblock %}

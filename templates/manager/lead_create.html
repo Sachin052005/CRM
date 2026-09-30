@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Create Lead - Manager Workspace{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Create Lead</h1>
+    <p>Register a new inquiry and assign it to your telecallers</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'manager_leads_list' %}" class="btn btn-secondary">Back to Leads</a>
+  </div>
+</div>
+
+<div style="max-width: 760px;">
+  <div class="crm-card">
+    <div class="crm-card-body">
+      <form method="POST">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors.0 }}</div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label">Lead Name <span class="required">*</span></label>
+            {{ form.name }}
+            {% if form.name.errors %}<div class="form-error">{{ form.name.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number <span class="required">*</span></label>
+            {{ form.phone }}
+            {% if form.phone.errors %}<div class="form-error">{{ form.phone.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="form-error">{{ form.email.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label">Alternate Phone</label>
+            {{ form.alternate_phone }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Assign Telecaller</label>
+          {{ form.assigned_telecaller }}
+          {% if form.assigned_telecaller.errors %}<div class="form-error">{{ form.assigned_telecaller.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label">Inquiry Channel / Source</label>
+            {{ form.channel }}
+            {% if form.channel.errors %}<div class="form-error">{{ form.channel.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label">Interested Product / Course</label>
+            {{ form.product }}
+            {% if form.product.errors %}<div class="form-error">{{ form.product.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Status <span class="required">*</span></label>
+          {{ form.status }}
+          {% if form.status.errors %}<div class="form-error">{{ form.status.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Initial Notes & Background</label>
+          {{ form.notes }}
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+          <a href="{% url 'manager_leads_list' %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save Lead</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

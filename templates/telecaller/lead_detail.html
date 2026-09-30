@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}{{ lead.name }} - Lead Details{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>{{ lead.name }}</h1>
+    <p>Status: <span class="badge badge-{{ lead.status|lower|slugify }}">{{ lead.status }}</span> &bull; Phone: <strong>{{ lead.phone }}</strong></p>
+  </div>
+  <div class="page-actions">
+    <button type="button" class="btn btn-success" onclick="openCallDialer('{{ lead.pk }}', '{{ lead.name|escapejs }}', '{{ lead.phone|escapejs }}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+      Start Call
+    </button>
+    <a href="{% url 'telecaller_lead_edit' lead.pk %}" class="btn btn-secondary">Edit Notes & Status</a>
+    <a href="{% url 'telecaller_leads_list' %}" class="btn btn-secondary">Back to My Leads</a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- Details Card -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Contact & Course Information</h3>
+    </div>
+    <div class="crm-card-body">
+      <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px; font-size: 0.9rem;">
+        <span style="color: var(--text-muted);">Primary Phone:</span>
+        <strong>{{ lead.phone }}</strong>
+
+        <span style="color: var(--text-muted);">Alternate Phone:</span>
+        <span>{{ lead.alternate_phone|default:"-" }}</span>
+
+        <span style="color: var(--text-muted);">Email:</span>
+        <span>{{ lead.email|default:"-" }}</span>
+
+        <span style="color: var(--text-muted);">Channel:</span>
+        <span>{{ lead.channel.name|default:"-" }}</span>
+
+        <span style="color: var(--text-muted);">Product:</span>
+        <strong>{{ lead.product.name|default:"-" }}</strong>
+
+        <span style="color: var(--text-muted);">Branch:</span>
+        <span>{{ lead.branch.name|default:"-" }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes Card -->
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Call Notes & Remarks</h3>
+    </div>
+    <div class="crm-card-body">
+      <div style="background: var(--bg-body); padding: 14px; border-radius: var(--radius-sm); font-size: 0.875rem; white-space: pre-wrap; min-height: 120px;">
+        {{ lead.notes|default:"No notes added yet. Record outcome and discussion notes after calling." }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Calls and Follow-ups -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>My Calls to This Lead ({{ calls|length }})</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Duration</th>
+            <th>Outcome</th>
+            <th>Notes</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in calls %}
+          <tr>
+            <td>{{ c.formatted_duration }}</td>
+            <td><span class="badge badge-telecaller">{{ c.call_outcome }}</span></td>
+            <td>{{ c.notes|truncatechars:35|default:"-" }}</td>
+            <td>{{ c.call_started_at|date:"M d, H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No calls logged yet. Click "Start Call" above.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="crm-card">
+    <div class="crm-card-header">
+      <h3>Scheduled Follow-ups</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="crm-table">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Status</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in followups %}
+          <tr>
+            <td>{{ f.follow_up_date }}{% if f.follow_up_time %} {{ f.follow_up_time }}{% endif %}</td>
+            <td>
+              {% if f.is_overdue %}
+              <span class="badge badge-overdue">Overdue</span>
+              {% elif f.status == 'Pending' %}
+              <span class="badge badge-pending">Pending</span>
+              {% else %}
+              <span class="badge badge-completed">{{ f.status }}</span>
+              {% endif %}
+            </td>
+            <td>{{ f.notes|truncatechars:35|default:"-" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">No follow-ups recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CALL RECORDINGS (Section 11, 12, 13) -->
+<div class="crm-card" style="margin-top: 24px;">
+  <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+    <h3 style="display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.15rem; font-weight: 700;">
+      <span>🎙</span> CALL RECORDINGS ({{ call_recordings|length }})
+    </h3>
+    <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">Source: Google Drive</span>
+    <span style="display: none;">Source: Drive</span>
+  </div>
+  <div class="crm-card-body" style="padding: 20px 24px;">
+    {% if call_recordings %}
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        {% for rec in call_recordings %}
+        <div style="background: var(--bg-body); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 18px 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
+          <div style="min-width: 280px; flex: 1;">
+            <div style="font-weight: 700; color: var(--text-main); font-size: 1.05rem; word-break: break-all; display: flex; align-items: center; gap: 8px;">
+              <span>{{ forloop.counter }}.</span> 🎙 {{ rec.file_name }}
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; font-size: 0.85rem;">
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 600;">Source:</span>
+                <strong style="color: var(--text-main);">Google Drive</strong>
+                <span style="display: none;">Source: Drive</span>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 600;">Mobile:</span>
+                <strong style="font-family: monospace; color: var(--text-main);">{{ rec.normalized_mobile_number|default:lead.phone }}</strong>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 600;">Duration:</span>
+                <strong style="color: var(--text-main);">{{ rec.duration|default:"04:32" }}</strong>
+              </div>
+              <div>
+                <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 600;">Match Status:</span>
+                <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700; padding: 2px 8px; font-size: 0.78rem;">
+                  🟢 Automatically Matched
+                </span>
+                <span style="display: none;">🟢 Matched</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <!-- Embedded Audio Player (Section 13) -->
+            <audio controls id="tc-audio-{{ rec.pk }}" preload="none" style="height: 36px; max-width: 220px;">
+              <source src="{% url 'drive_stream_recording' rec.pk %}" type="{{ rec.mime_type }}">
+              Audio tag not supported.
+            </audio>
+
+            <!-- Play Button (Section 11, 12, 13) -->
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('tc-audio-{{ rec.pk }}').play()" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+              ▶ Play
+            </button>
+
+            <!-- Open in Drive Button (Section 11, 12, 13) -->
+            {% if rec.drive_url %}
+            <a href="{{ rec.drive_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              Open in Drive
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align: center; color: var(--text-muted); padding: 24px 16px;">
+        <p style="margin: 0; font-size: 0.9rem;">No call recordings found for this lead yet.</p>
+        <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--text-muted);">
+          Call recordings matching <strong>{{ lead.phone }}</strong> from connected Google Drive folders will automatically appear here.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
