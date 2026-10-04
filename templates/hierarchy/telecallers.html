@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Telecallers - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<!-- Progressive Hierarchy Breadcrumbs -->
+<div class="hierarchy-breadcrumbs">
+  <a href="{% url 'hierarchy_sales_heads_list' %}">Sales Heads</a>
+  <span class="separator">&gt;</span>
+  {% if sales_head %}
+    <a href="{% url 'sales_head_branch_heads' sales_head.id %}">{{ sales_head.get_full_name|default:sales_head.username }}</a>
+    <span class="separator">&gt;</span>
+  {% endif %}
+  {% if branch_head %}
+    <a href="{% url 'branch_head_counselors' branch_head.id %}">{{ branch_head.get_full_name|default:branch_head.username }}</a>
+    <span class="separator">&gt;</span>
+  {% endif %}
+  {% if counselor %}
+    <span class="current">{{ counselor.get_full_name|default:counselor.username }}</span>
+  {% else %}
+    <span class="current">Telecallers</span>
+  {% endif %}
+</div>
+
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>Telecallers</h1>
+    <p>
+      {% if counselor %}
+        Telecallers assigned to Counselor: <strong>{{ counselor.get_full_name|default:counselor.username }}</strong>
+        {% if counselor.branch %} ({{ counselor.branch.name }}){% endif %} &bull; Level 4
+      {% else %}
+        All Telecallers &bull; Level 4
+      {% endif %}
+    </p>
+  </div>
+  {% if request.user.is_admin_user %}
+  <div class="page-actions">
+    <a href="{% url 'admin_telecaller_create' %}" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Add Telecaller
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="filter-card">
+  <form method="GET" class="filter-form">
+    <div class="filter-col" style="flex: 2;">
+      <label>Search</label>
+      <input type="text" name="search" class="form-control" placeholder="Search by name, username, email, phone..." value="{{ search_query }}">
+    </div>
+    <div class="filter-col">
+      <label>Status</label>
+      <select name="status" class="form-select">
+        <option value="">All Statuses</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      {% if counselor %}
+      <a href="{% url 'counselor_telecallers' counselor.id %}" class="btn btn-secondary">Reset</a>
+      {% else %}
+      <a href="{% url 'hierarchy_telecallers_list' %}" class="btn btn-secondary">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Telecaller</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Branch</th>
+          <th>Supervising Counselor</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in page_obj %}
+        <tr>
+          <td>
+            <strong><a href="{% url 'telecaller_leads' t.id %}" style="color: var(--primary); text-decoration: none; font-size: 0.95rem;">{{ t.get_full_name|default:t.username }}</a></strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ t.username }}</div>
+          </td>
+          <td>{{ t.email|default:"-" }}</td>
+          <td>{{ t.phone|default:"-" }}</td>
+          <td>{{ t.branch.name|default:"-" }}</td>
+          <td>
+            {% if t.counselor %}
+            <span style="font-weight: 600; color: var(--text-main);">{{ t.counselor.get_full_name|default:t.counselor.username }}</span>
+            {% else %}
+            <span style="color: var(--danger);">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if t.is_active %}
+            <span class="badge badge-active">Active</span>
+            {% else %}
+            <span class="badge badge-inactive">Inactive</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px;">
+              <a href="{% url 'telecaller_leads' t.id %}" class="btn btn-primary btn-sm" title="View Assigned Leads & Calls for this Telecaller">
+                Assigned Leads &rarr;
+              </a>
+              {% if request.user.is_admin_user %}
+              <a href="{% url 'admin_telecaller_edit' t.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'admin_telecaller_assign' t.pk %}" class="btn btn-secondary btn-sm">Reassign</a>
+              <a href="{% url 'admin_telecaller_toggle_status' t.pk %}" class="btn btn-sm {% if t.is_active %}btn-secondary{% else %}btn-success{% endif %}">
+                {% if t.is_active %}Deactivate{% else %}Activate{% endif %}
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <h4>No Telecallers Found</h4>
+              <p>No Telecallers are assigned to this Counselor.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

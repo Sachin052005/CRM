@@ -90,7 +90,7 @@
           </td>
           <td>{{ t.email }}</td>
           <td>{{ t.phone|default:"-" }}</td>
-          <td><span class="badge badge-manager">{{ t.lead_count }}</span></td>
+          <td><a href="{% url 'telecaller_leads' t.pk %}" title="View Assigned Leads"><span class="badge badge-manager" style="cursor: pointer;">{{ t.lead_count }} leads</span></a></td>
           <td>{{ t.call_count }}</td>
           <td>{{ t.followup_count }}</td>
           <td>
@@ -102,7 +102,8 @@
           </td>
           <td style="text-align: right;">
             <div style="display: inline-flex; gap: 6px; align-items: center;">
-              <a href="{% url 'admin_telecaller_detail' t.pk %}" class="btn btn-secondary btn-sm" title="View details">View</a>
+              <a href="{% url 'telecaller_leads' t.pk %}" class="btn btn-primary btn-sm" title="View assigned leads">Leads</a>
+              <a href="{% url 'admin_telecaller_detail' t.pk %}" class="btn btn-secondary btn-sm" title="View details">Profile</a>
               <a href="{% url 'admin_telecaller_edit' t.pk %}" class="btn btn-secondary btn-sm" title="Edit Telecaller">Edit</a>
               <button type="button" class="btn btn-danger btn-sm" onclick="openDeleteModal('{{ t.pk }}', '{{ t.get_full_name|default:t.username|escapejs }}', '{{ t.username|escapejs }}')" title="Delete Telecaller">Delete</button>
             </div>

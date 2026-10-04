@@ -21,6 +21,7 @@ class LeadStatus(models.TextChoices):
     NO_ANSWER = 'No Answer', 'No Answer'
     BUSY = 'Busy', 'Busy'
     NOT_JOINED = 'Not Joined', 'Not Joined'
+    HISTORICAL = 'Historical', 'Historical'
 
 class LeadOwnerType(models.TextChoices):
     UNASSIGNED = 'UNASSIGNED', 'Unassigned'
@@ -242,6 +243,17 @@ class LeadImportHistory(models.Model):
     def __str__(self):
         return f"{self.file_name} ({self.uploaded_on.strftime('%Y-%m-%d %H:%M')})"
 
+class ConnectionState(models.TextChoices):
+    ACTIVE = 'ACTIVE', 'Active'
+    PAUSED = 'PAUSED', 'Paused'
+    DISCONNECTED = 'DISCONNECTED', 'Disconnected'
+
+class SyncStatus(models.TextChoices):
+    NEVER_SYNCED = 'NEVER_SYNCED', 'Never Synced'
+    RUNNING = 'RUNNING', 'Running'
+    SUCCESS = 'SUCCESS', 'Success'
+    FAILED = 'FAILED', 'Failed'
+
 class GoogleSheetConnection(models.Model):
     name = models.CharField(max_length=200)
     spreadsheet_url = models.URLField(max_length=500)
@@ -268,6 +280,12 @@ class GoogleSheetConnection(models.Model):
     )
     field_mapping = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
+    connection_status = models.CharField(
+        max_length=20,
+        choices=ConnectionState.choices,
+        default=ConnectionState.ACTIVE,
+        db_index=True
+    )
     sync_interval_seconds = models.IntegerField(default=60)
     last_sync_time = models.DateTimeField(null=True, blank=True)
     last_sync_status = models.CharField(max_length=50, default='Connected')
@@ -282,6 +300,32 @@ class GoogleSheetConnection(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            if 'is_active' in update_fields:
+                if self.is_active:
+                    self.connection_status = ConnectionState.ACTIVE
+                elif self.last_sync_status == 'Paused':
+                    self.connection_status = ConnectionState.PAUSED
+                else:
+                    self.connection_status = ConnectionState.DISCONNECTED
+                update_fields.add('connection_status')
+            elif 'connection_status' in update_fields:
+                self.is_active = (self.connection_status == ConnectionState.ACTIVE)
+                update_fields.add('is_active')
+            kwargs['update_fields'] = list(update_fields)
+        else:
+            if not self.is_active:
+                if self.last_sync_status == 'Paused':
+                    self.connection_status = ConnectionState.PAUSED
+                else:
+                    self.connection_status = ConnectionState.DISCONNECTED
+            else:
+                self.connection_status = ConnectionState.ACTIVE
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['-created_at']

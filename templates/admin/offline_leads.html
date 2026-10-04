@@ -78,13 +78,9 @@
           <!-- Status Badge & Disconnect -->
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px;">
             <div>
-              {% if sheet.status == 'Connected' %}
-              <span class="badge badge-success">Live Connected</span>
-              {% elif sheet.status == 'Paused' %}
-              <span class="badge badge-paused">Paused</span>
-              {% else %}
-              <span class="badge badge-disconnected">Disconnected</span>
-              {% endif %}
+              <span id="sheetConnectionStatus-{{ sheet.id }}" class="badge {% if sheet.status == 'Connected' %}badge-success{% elif sheet.status == 'Paused' %}badge-paused{% else %}badge-disconnected{% endif %}">
+                {% if sheet.status == 'Connected' %}Live Connected{% elif sheet.status == 'Paused' %}Paused{% else %}Disconnected{% endif %}
+              </span>
               <span style="display: none;">🟢 Connected</span>
             </div>
             <button 
@@ -121,9 +117,10 @@
               <span style="color: var(--text-muted);">Last Sync:</span>
               <strong style="color: var(--text-main);" id="sheetLastRefresh-{{ sheet.id }}">{{ sheet.last_sync }}</strong>
             </div>
+            
             <div style="display: flex; justify-content: space-between;">
               <span style="color: var(--text-muted);">Sync Status:</span>
-              <span class="badge {% if sheet.sync_status == 'Failed' %}badge-failed{% else %}badge-success{% endif %}">{{ sheet.sync_status }}</span>
+              <span id="sheetSyncStatus-{{ sheet.id }}" class="badge {% if sheet.sync_status == 'Failed' %}badge-failed{% else %}badge-success{% endif %}">{{ sheet.sync_status }}</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
               <span style="color: var(--text-muted);">Auto Refresh:</span>
@@ -328,7 +325,7 @@
           id="spreadsheetUrlInput" 
           name="spreadsheet_url" 
           class="form-control" 
-          placeholder="Paste Google Spreadsheet URL" 
+          placeholder="Paste Spreadsheet URL" 
           required 
           style="width: 100%; padding: 10px 14px; font-size: 0.95rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm);"
         >
@@ -644,6 +641,32 @@ function updateCardsDOM(sheets, selectedId) {
     if (leadsEl && s.leads_count !== undefined) leadsEl.textContent = s.leads_count;
     const refEl = document.getElementById(`sheetLastRefresh-${s.id}`);
     if (refEl && s.last_refresh) refEl.textContent = s.last_refresh;
+
+    // Update Connection State (ACTIVE / Live Connected)
+    const connEl = document.getElementById(`sheetConnectionStatus-${s.id}`);
+    if (connEl && s.status) {
+      if (s.status === 'Connected') {
+        connEl.textContent = 'Live Connected';
+        connEl.className = 'badge badge-success';
+      } else if (s.status === 'Paused') {
+        connEl.textContent = 'Paused';
+        connEl.className = 'badge badge-paused';
+      } else {
+        connEl.textContent = 'Disconnected';
+        connEl.className = 'badge badge-disconnected';
+      }
+    }
+
+    // Update Sync Status (Success vs Failed)
+    const syncEl = document.getElementById(`sheetSyncStatus-${s.id}`);
+    if (syncEl && s.sync_status) {
+      syncEl.textContent = s.sync_status;
+      if (s.sync_status.toLowerCase() === 'failed') {
+        syncEl.className = 'badge badge-failed';
+      } else {
+        syncEl.className = 'badge badge-success';
+      }
+    }
   });
 }
 

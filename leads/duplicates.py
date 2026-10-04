@@ -472,38 +472,62 @@ def process_incoming_lead_with_10day_rule(lead_data, branch=None, source="Google
 
         else:
             # ─────────────────────────────────────────────────────────
-            # AFTER 10 DAYS -> VALID NEW LEAD!
+            # AFTER 10 DAYS -> VALID NEW LEAD! (Rule B)
             # ─────────────────────────────────────────────────────────
-            # Treat submission as a valid new lead and assign Telecaller
-            channel = (
-                Channel.objects.filter(name__icontains='Google Form').first() or
-                Channel.objects.filter(name__icontains='Form').first() or
-                Channel.objects.first()
-            )
+            # Mark existing lead in Branch A as historical/inactive (never deleted)
+            # Create new active lead in Branch B with previous branch history
+            with transaction.atomic():
+                orig_branch_name = existing_lead.branch.name if existing_lead.branch else 'Original Branch'
+                new_branch_name = incoming_branch.name if incoming_branch else 'New Branch'
 
-            new_lead = Lead.objects.create(
-                name=name or existing_lead.name,
-                phone=phone or existing_lead.phone,
-                email=email or existing_lead.email,
-                alternate_phone=lead_data.get('alternate_phone', ''),
-                channel=channel,
-                status=LeadStatus.NEW,
-                branch=incoming_branch,
-                source=source,
-                is_offline=True,
-                notes=f"New submission from {incoming_branch.name if incoming_branch else 'branch'} (submitted 10+ days after original lead #{existing_lead.id})."
-            )
+                existing_lead.status = LeadStatus.HISTORICAL
+                hist_note = f"[System]: Marked Historical/Inactive after new submission in '{new_branch_name}' after {round(days_diff, 1)} days."
+                existing_lead.notes = f"{existing_lead.notes}\n{hist_note}".strip() if existing_lead.notes else hist_note
+                existing_lead.save(update_fields=['status', 'notes', 'updated_at'])
 
-            assign_lead_to_branch_telecaller(new_lead, branch=incoming_branch, source=source, triggered_by=user)
+                channel = (
+                    Channel.objects.filter(name__icontains='Google Form').first() or
+                    Channel.objects.filter(name__icontains='Form').first() or
+                    Channel.objects.first()
+                )
 
-            log_activity(
-                user=user,
-                action="Lead Created (10+ Days Renewal)",
-                description=f"Lead '{new_lead.name}' ({new_lead.phone}) submitted 10+ days after original lead #{existing_lead.id}. Processed as valid new lead in branch '{incoming_branch.name if incoming_branch else 'N/A'}'.",
-                object_type="Lead",
-                object_id=new_lead.id
-            )
-            return (new_lead, False, None)
+                history_note = f"New submission from {new_branch_name}. Previous history: Originally submitted in {orig_branch_name} on {existing_lead.created_at.strftime('%d %b %Y')} (Lead #{existing_lead.id})."
+                new_lead = Lead.objects.create(
+                    name=name or existing_lead.name,
+                    phone=phone or existing_lead.phone,
+                    email=email or existing_lead.email,
+                    alternate_phone=lead_data.get('alternate_phone', ''),
+                    channel=channel,
+                    status=LeadStatus.NEW,
+                    branch=incoming_branch,
+                    source=source,
+                    is_offline=True,
+                    notes=history_note
+                )
+
+                dup_rec = DuplicateLeadRecord.objects.create(
+                    original_lead=existing_lead,
+                    name=name or existing_lead.name,
+                    phone=phone or existing_lead.phone,
+                    email=email or existing_lead.email,
+                    branch=incoming_branch,
+                    branch_name=new_branch_name,
+                    status='New Submission (>10 Days)',
+                    notes=f"New submission after {round(days_diff, 1)} days in {new_branch_name}. Previous lead #{existing_lead.id} ({orig_branch_name}) marked historical.",
+                    source=source,
+                    data_payload=clean_payload
+                )
+
+                assign_lead_to_branch_telecaller(new_lead, branch=incoming_branch, source=source, triggered_by=user)
+
+                log_activity(
+                    user=user,
+                    action="Lead Created (10+ Days Renewal)",
+                    description=f"Lead '{new_lead.name}' ({new_lead.phone}) submitted {round(days_diff, 1)} days after original lead #{existing_lead.id}. Previous lead marked historical. Active lead created in branch '{new_branch_name}'.",
+                    object_type="Lead",
+                    object_id=new_lead.id
+                )
+                return (new_lead, False, dup_rec)
 
     else:
         # ─────────────────────────────────────────────────────────
@@ -611,6 +635,23 @@ def process_spreadsheet_row_duplicate_rules(row_data, headers=None, connection=N
     branch_str = get_val('branch', 'location', 'center', 'city')
     notes_str = get_val('notes', 'remarks', 'query', 'course', 'product')
 
+    source_label = connection.name if connection else 'Google Sheets'
+
+    # Skip completely empty trailing rows
+    if not name and not phone and not email:
+        return (None, False, None)
+
+    # Clean fallback name for WhatsApp / online inquiries with mobile/email only
+    if not name:
+        if phone:
+            clean_p = re.sub(r'[^0-9]', '', str(phone))
+            disp_p = clean_p[-10:] if len(clean_p) >= 10 else clean_p
+            name = f"{source_label} Lead ({disp_p})"
+        elif email:
+            name = f"{source_label} Lead ({email.split('@')[0]})"
+        else:
+            name = f"{source_label} Lead"
+
     row_idx = row_dict.get('_row_index', 0)
     row_id = ''
     if connection:
@@ -712,37 +753,59 @@ def process_spreadsheet_row_duplicate_rules(row_data, headers=None, connection=N
 
         else:
             # ─────────────────────────────────────────────────────────
-            # DIFFERENT BRANCH AFTER 10 DAYS -> VALID NEW LEAD!
+            # DIFFERENT BRANCH AFTER 10 DAYS -> VALID NEW LEAD! (Rule B)
             # ─────────────────────────────────────────────────────────
-            # Channel/Source attribution: use the connection's selected Channel/Source
-            # (the admin-selected marketing attribution), not a hardcoded "Google Sheets".
-            channel = (connection.channel if connection else None) or (
-                Channel.objects.filter(name__icontains='Google Sheets').first() or
-                Channel.objects.first()
-            )
+            with transaction.atomic():
+                orig_branch_name = existing_lead.branch.name if existing_lead.branch else 'Original Branch'
+                new_branch_name = incoming_branch.name if incoming_branch else 'New Branch'
 
-            new_lead = Lead.objects.create(
-                name=name or existing_lead.name,
-                phone=phone or existing_lead.phone,
-                email=email or existing_lead.email,
-                branch=incoming_branch,
-                channel=channel,
-                source=source_label,
-                is_offline=True,
-                status=LeadStatus.NEW,
-                notes=f"New submission from {incoming_branch.name if incoming_branch else 'branch'} (submitted 10+ days after original lead #{existing_lead.id})."
-            )
+                existing_lead.status = LeadStatus.HISTORICAL
+                hist_note = f"[System]: Marked Historical/Inactive after new submission in '{new_branch_name}' after {round(days_diff, 1)} days."
+                existing_lead.notes = f"{existing_lead.notes}\n{hist_note}".strip() if existing_lead.notes else hist_note
+                existing_lead.save(update_fields=['status', 'notes', 'updated_at'])
 
-            assign_lead_to_branch_telecaller(new_lead, branch=incoming_branch, source=source_label, triggered_by=user)
-
-            if connection and row_id:
-                GoogleSheetRowMapping.objects.get_or_create(
-                    connection=connection,
-                    row_identifier=row_id,
-                    defaults={'lead': new_lead, 'row_index': row_idx, 'source_status': 'Active'}
+                # Channel/Source attribution: use the connection's selected Channel/Source
+                channel = (connection.channel if connection else None) or (
+                    Channel.objects.filter(name__icontains='Google Sheets').first() or
+                    Channel.objects.first()
                 )
 
-            return (new_lead, False, None)
+                history_note = f"New submission from {new_branch_name}. Previous history: Originally submitted in {orig_branch_name} on {existing_lead.created_at.strftime('%d %b %Y')} (Lead #{existing_lead.id})."
+                new_lead = Lead.objects.create(
+                    name=name or existing_lead.name,
+                    phone=phone or existing_lead.phone,
+                    email=email or existing_lead.email,
+                    branch=incoming_branch,
+                    channel=channel,
+                    source=source_label,
+                    is_offline=True,
+                    status=LeadStatus.NEW,
+                    notes=history_note
+                )
+
+                dup_rec = DuplicateLeadRecord.objects.create(
+                    original_lead=existing_lead,
+                    name=name or existing_lead.name,
+                    phone=phone or existing_lead.phone,
+                    email=email or existing_lead.email,
+                    branch=incoming_branch,
+                    branch_name=new_branch_name,
+                    status='New Submission (>10 Days)',
+                    notes=f"New submission after {round(days_diff, 1)} days in {new_branch_name}. Previous lead #{existing_lead.id} ({orig_branch_name}) marked historical.",
+                    source=source_label,
+                    data_payload=clean_payload
+                )
+
+                assign_lead_to_branch_telecaller(new_lead, branch=incoming_branch, source=source_label, triggered_by=user)
+
+                if connection and row_id:
+                    GoogleSheetRowMapping.objects.get_or_create(
+                        connection=connection,
+                        row_identifier=row_id,
+                        defaults={'lead': new_lead, 'row_index': row_idx, 'source_status': 'Active'}
+                    )
+
+                return (new_lead, False, dup_rec)
 
     else:
         # ─────────────────────────────────────────────────────────

@@ -138,18 +138,10 @@ def ensure_default_lead_connections():
 @admin_required
 def admin_configuration_view(request):
     """
-    Displays the Configuration page for managing lead source connections.
+    Configuration / System / Integrations removed as per requirements.
+    Cleanly redirects to Admin Dashboard.
     """
-    ensure_default_lead_connections()
-    connections = LeadConnection.objects.all().select_related('channel', 'branch')
-    channels = Channel.objects.filter(status='Active')
-    branches = Branch.objects.filter(status='Active')
-
-    return render(request, 'admin/configuration.html', {
-        'connections': connections,
-        'channels': channels,
-        'branches': branches,
-    })
+    return redirect('admin_dashboard')
 
 
 @admin_required

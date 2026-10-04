@@ -51,8 +51,9 @@
 </div>
 
 <div class="crm-card">
-  <div class="crm-card-header">
-    <h3>Telecallers Under This Counselor</h3>
+  <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="margin: 0;">Telecallers Under This Counselor</h3>
+    <a href="{% url 'hierarchy_counselor_telecallers' counselor.pk %}" class="btn btn-secondary btn-sm">View in Hierarchy &rarr;</a>
   </div>
   <div class="table-responsive">
     <table class="crm-table">

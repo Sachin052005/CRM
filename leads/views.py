@@ -957,36 +957,31 @@ def admin_offline_leads_data_api(request):
             'google_form_url': gf_url,
         })
 
-    # Poll and sync all active spreadsheets
+    # Poll and sync all active spreadsheets independently
     for conn in active_conns:
         try:
             h, r = fetch_sheet_data(conn.spreadsheet_id, conn.worksheet_name)
-            if h and any(h):
-                if not conn.field_mapping:
-                    conn.field_mapping = {}
-                conn.field_mapping['headers'] = h
-                conn.field_mapping['rows'] = r
-                conn.last_sync_time = timezone.now()
-                conn.last_sync_status = 'Connected'
-                conn.save(update_fields=['field_mapping', 'last_sync_time', 'last_sync_status'])
-
-                # Run duplicate rules on detected rows
-                for loop_idx, row_item in enumerate(r, start=2):
-                    r_dict = dict(row_item) if isinstance(row_item, dict) else {h[i]: row_item[i] for i in range(min(len(h), len(row_item)))}
-                    r_dict['_row_index'] = loop_idx
-                    process_spreadsheet_row_duplicate_rules(r_dict, headers=h, connection=conn, user=request.user)
-
-            # Continuous sync into CRM leads model
-            sync_google_sheet(conn, triggered_by=request.user)
+            sync_google_sheet(conn, triggered_by=request.user, headers=h, rows=r)
         except Exception as e:
-            logger.warning(f"10-second polling fetch/sync error for {conn.name}: {e}")
+            logger.warning(f"10-second polling sync error for {conn.name}: {e}")
+            conn.last_sync_time = timezone.now()
+            conn.last_sync_status = 'Failed'
+            conn.last_sync_error = str(e)
+            conn.connection_status = 'ACTIVE'
+            conn.save(update_fields=['last_sync_time', 'last_sync_status', 'last_sync_error', 'connection_status'])
 
-    # Determine which spreadsheet is currently viewed
+    # Re-query active connections from database to obtain freshly saved sync state and lead counts
+    active_conns = list(GoogleSheetConnection.objects.filter(is_active=True).order_by('-created_at'))
+
+    # Determine which spreadsheet is currently viewed (fresh from DB after sync)
     selected_id = request.GET.get('sheet_id')
-    if selected_id and str(selected_id).isdigit() and active_conns.filter(id=int(selected_id)).exists():
-        selected_conn = active_conns.filter(id=int(selected_id)).first()
+    if selected_id and str(selected_id).isdigit() and any(c.id == int(selected_id) for c in active_conns):
+        selected_conn = next(c for c in active_conns if c.id == int(selected_id))
     else:
-        selected_conn = active_conns.first()
+        selected_conn = active_conns[0] if active_conns else None
+
+    if selected_conn:
+        selected_conn.refresh_from_db()
 
     headers = selected_conn.field_mapping.get('headers', []) if selected_conn.field_mapping else []
     rows = selected_conn.field_mapping.get('rows', []) if selected_conn.field_mapping else []
@@ -1025,7 +1020,8 @@ def admin_offline_leads_data_api(request):
             'id': s.id,
             'name': s.name,
             'spreadsheet_url': s.spreadsheet_url,
-            'status': 'Connected' if s.is_active else 'Disconnected',
+            'status': 'Connected' if s.is_active else ('Paused' if s.connection_status == 'PAUSED' else 'Disconnected'),
+            'sync_status': s.last_sync_status or 'Connected',
             'leads_count': s_lead_count,
             'last_sync': sync_t,
             'last_refresh': sync_t,
@@ -1880,6 +1876,12 @@ def admin_duplicate_leads_view(request):
         dup_branch = rec.branch.name if rec.branch else (rec.branch_name or 'N/A')
         is_cross_branch_10day = (orig_branch != dup_branch and 'within 10 days' in (rec.notes or '').lower())
 
+        time_delta = rec.submitted_at - orig.created_at
+        diff_days = max(0.0, round(time_delta.total_seconds() / 86400.0, 1))
+        diff_days_str = f"{int(diff_days)} days" if diff_days.is_integer() else f"{diff_days} days"
+
+        status_label = rec.status or ('DUPLICATE' if diff_days <= 10.0 else 'New Submission (>10 Days)')
+
         formatted_duplicates.append({
             'id': rec.id,
             'name': rec.name,
@@ -1891,7 +1893,9 @@ def admin_duplicate_leads_view(request):
             'original_date': timezone.localtime(orig.created_at).strftime('%d %b %Y, %I:%M %p'),
             'duplicate_branch': dup_branch,
             'duplicate_date': timezone.localtime(rec.submitted_at).strftime('%d %b %Y, %I:%M %p'),
-            'status': 'DUPLICATE',
+            'days_difference': diff_days,
+            'days_difference_display': diff_days_str,
+            'status': status_label,
             'notes': rec.notes,
             'is_cross_branch_10day': is_cross_branch_10day,
             'lead_ids_str': f"{orig.id}",
@@ -2029,7 +2033,7 @@ def _seed_default_lead_setup_if_needed():
             defaults={
                 'assignment_percentage': 0,
                 'lead_count': 0,
-                'is_active': True,
+                'is_active': False,
             }
         )
 
@@ -2392,17 +2396,15 @@ def admin_lead_setup(request):
     if request.method == 'POST':
         action = request.POST.get('action', '')
 
-        # 1. Update assignment method
+        # 1. Update assignment method (Strictly percentage-based)
         if action == 'update_method':
-            method = request.POST.get('assignment_method', '').strip()
-            if method in [AssignmentMethod.PERCENTAGE, AssignmentMethod.COUNT]:
-                config.assignment_method = method
-                config.save(update_fields=['assignment_method', 'updated_at'])
-                msg = f"Assignment method updated to {config.get_assignment_method_display()}."
-                if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
-                    return JsonResponse({'success': True, 'message': msg, 'method': method})
-                messages.success(request, msg)
-                return redirect('admin_lead_setup')
+            config.assignment_method = AssignmentMethod.PERCENTAGE
+            config.save(update_fields=['assignment_method', 'updated_at'])
+            msg = "Assignment method configured to Percentage Based (100% total allocation)."
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
+                return JsonResponse({'success': True, 'message': msg, 'method': AssignmentMethod.PERCENTAGE})
+            messages.success(request, msg)
+            return redirect('admin_lead_setup')
 
         # 2. Strict Branch Allocation (Problem 2)
         elif action == 'save_branch_allocation':
@@ -2437,10 +2439,8 @@ def admin_lead_setup(request):
 
             # Parse & validate percentages for checked telecallers
             pct_map = {}
-            limit_map = {}
             for tc_id in active_tc_ids:
                 pct_val = request.POST.get(f'percentage_{tc_id}') or request.POST.get(f'pct_{tc_id}')
-                limit_val = request.POST.get(f'lead_count_{tc_id}') or request.POST.get(f'count_{tc_id}') or 0
 
                 if pct_val is None or str(pct_val).strip() == '':
                     err_msg = f"Assignment percentage is required for each selected telecaller in branch '{branch.name}'."
@@ -2460,11 +2460,6 @@ def admin_lead_setup(request):
                         return JsonResponse({'success': False, 'error': err_msg}, status=400)
                     messages.error(request, err_msg)
                     return redirect('admin_lead_setup')
-
-                try:
-                    limit_map[tc_id] = int(limit_val) if str(limit_val).strip() else 0
-                except (ValueError, TypeError):
-                    limit_map[tc_id] = 0
 
             total_pct = sum(pct_map.values())
             if total_pct != 100:
@@ -2488,15 +2483,16 @@ def admin_lead_setup(request):
                     if tc.id in active_tc_ids:
                         setup, _ = TelecallerLeadSetup.objects.get_or_create(telecaller=tc, branch=branch)
                         setup.assignment_percentage = pct_map[tc.id]
-                        setup.lead_count = limit_map.get(tc.id, 0)
+                        setup.lead_count = 0
                         setup.is_active = True
                         setup.save(update_fields=['assignment_percentage', 'lead_count', 'is_active', 'updated_at'])
                     else:
                         setup = TelecallerLeadSetup.objects.filter(telecaller=tc, branch=branch).first()
                         if setup:
                             setup.assignment_percentage = 0
+                            setup.lead_count = 0
                             setup.is_active = False
-                            setup.save(update_fields=['assignment_percentage', 'is_active', 'updated_at'])
+                            setup.save(update_fields=['assignment_percentage', 'lead_count', 'is_active', 'updated_at'])
 
                 from .assignment import apply_branch_lead_distribution, retry_pending_assignments
                 assigned, remaining, dist_msg = apply_branch_lead_distribution(branch=branch, user=request.user)
@@ -2512,12 +2508,11 @@ def admin_lead_setup(request):
             messages.success(request, msg)
             return redirect('admin_lead_setup')
 
-        # 3. Add or update single Telecaller assignment (backwards compatible)
+        # 3. Add or update single Telecaller assignment (percentage-based)
         elif action == 'save_assignment':
             branch_id = request.POST.get('branch_id')
             telecaller_id = request.POST.get('telecaller_id')
             percentage = request.POST.get('assignment_percentage', 0)
-            lead_limit = request.POST.get('lead_count', 0)
             is_active_val = request.POST.get('is_active', '1')
             is_active = str(is_active_val).lower() not in ['0', 'false', 'off']
 
@@ -2525,7 +2520,6 @@ def admin_lead_setup(request):
                 branch = Branch.objects.get(id=branch_id)
                 telecaller = User.objects.get(id=telecaller_id, role=UserRole.TELECALLER)
                 pct = int(percentage) if str(percentage).strip() else 0
-                limit = int(lead_limit) if str(lead_limit).strip() else 0
 
                 if not telecaller.branch:
                     telecaller.branch = branch
@@ -2536,18 +2530,18 @@ def admin_lead_setup(request):
                     branch=branch,
                     defaults={
                         'assignment_percentage': pct,
-                        'lead_count': limit,
+                        'lead_count': 0,
                         'is_active': is_active,
                     }
                 )
                 if not created:
                     setup.assignment_percentage = pct
-                    setup.lead_count = limit
+                    setup.lead_count = 0
                     setup.is_active = is_active
                     setup.save(update_fields=['assignment_percentage', 'lead_count', 'is_active', 'updated_at'])
 
                 tc_name = telecaller.get_full_name() or telecaller.username
-                msg = f"Lead setup saved for {tc_name} ({branch.name}): {pct}% | {limit} leads limit."
+                msg = f"Lead setup saved for {tc_name} ({branch.name}): {pct}%."
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
                     return JsonResponse({'success': True, 'message': msg})
                 messages.success(request, msg)
@@ -2560,7 +2554,7 @@ def admin_lead_setup(request):
                 messages.error(request, err_msg)
                 return redirect('admin_lead_setup')
 
-        # 4. Quick inline update of percentages/counts for multiple telecallers
+        # 4. Quick inline update of percentages for multiple telecallers
         elif action == 'save_all_assignments':
             try:
                 for key, val in request.POST.items():
@@ -2569,13 +2563,8 @@ def admin_lead_setup(request):
                         setup = TelecallerLeadSetup.objects.filter(id=setup_id).first()
                         if setup:
                             setup.assignment_percentage = int(val) if val.isdigit() else 0
-                            setup.save(update_fields=['assignment_percentage', 'updated_at'])
-                    elif key.startswith('count_'):
-                        setup_id = key.replace('count_', '')
-                        setup = TelecallerLeadSetup.objects.filter(id=setup_id).first()
-                        if setup:
-                            setup.lead_count = int(val) if val.isdigit() else 0
-                            setup.save(update_fields=['lead_count', 'updated_at'])
+                            setup.lead_count = 0
+                            setup.save(update_fields=['assignment_percentage', 'lead_count', 'updated_at'])
                 messages.success(request, "Lead setup configurations saved successfully.")
                 return redirect('admin_lead_setup')
             except Exception:

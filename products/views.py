@@ -9,8 +9,11 @@ from activities.utils import log_activity
 
 @admin_required
 def admin_products_list(request):
-    search_query = request.GET.get('search', '').strip()
-    status_filter = request.GET.get('status', '').strip()
+    """
+    Products page removed as per requirement. Cleanly redirects to Admin Dashboard.
+    Database table products_product is preserved.
+    """
+    return redirect('admin_dashboard')
 
     products_qs = Product.objects.annotate(lead_count=Count('leads'))
 

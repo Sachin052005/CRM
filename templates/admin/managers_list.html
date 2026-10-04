@@ -2,17 +2,24 @@
 {% block title %}Sales Heads - TECHPANDA CRM{% endblock %}
 
 {% block content %}
+<!-- Progressive Hierarchy Breadcrumbs -->
+<div class="hierarchy-breadcrumbs">
+  <span class="current">Sales Heads</span>
+</div>
+
 <div class="page-header">
   <div class="page-title-group">
     <h1>Sales Heads</h1>
-    <p>Manage Sales Head accounts across branches</p>
+    <p>Manage Sales Head accounts across branches &bull; Level 1</p>
   </div>
+  {% if request.user.is_admin_user %}
   <div class="page-actions">
     <a href="{% url 'admin_manager_create' %}" class="btn btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
       Add Sales Head
     </a>
   </div>
+  {% endif %}
 </div>
 
 <div class="filter-card">
@@ -54,8 +61,6 @@
           <th>Email</th>
           <th>Phone</th>
           <th>Branches</th>
-          <th>Telecallers</th>
-          <th>Leads</th>
           <th>Status</th>
           <th>Created Date</th>
           <th style="text-align: right;">Actions</th>
@@ -65,7 +70,7 @@
         {% for m in page_obj %}
         <tr>
           <td>
-            <strong><a href="{% url 'admin_manager_detail' m.pk %}">{{ m.get_full_name|default:m.username }}</a></strong>
+            <strong><a href="{% url 'sales_head_branch_heads' m.pk %}" style="color: var(--primary); text-decoration: none;">{{ m.get_full_name|default:m.username }}</a></strong>
             <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ m.username }}</div>
           </td>
           <td>{{ m.email }}</td>
@@ -73,14 +78,15 @@
           <td>
             {% with access_branches=m.branch_access.all %}
             {% if access_branches %}
-            <span title="{% for a in access_branches %}{{ a.branch.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">{{ access_branches|length }} branch{{ access_branches|length|pluralize }}</span>
+            <span title="{% for a in access_branches %}{{ a.branch.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+              <strong>{{ access_branches|length }} branch{{ access_branches|length|pluralize }}</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">({% for a in access_branches %}{{ a.branch.name }}{% if not forloop.last %}, {% endif %}{% endfor %})</span>
+            </span>
             {% else %}
             <span style="color: var(--text-muted);">No branches</span>
             {% endif %}
             {% endwith %}
           </td>
-          <td><span class="badge badge-manager">{{ m.telecaller_count }}</span></td>
-          <td><span class="badge badge-telecaller">{{ m.lead_count }}</span></td>
           <td>
             {% if m.is_active %}
             <span class="badge badge-active">Active</span>
@@ -91,12 +97,14 @@
           <td>{{ m.date_joined|date:"M d, Y" }}</td>
           <td style="text-align: right;">
             <div style="display: inline-flex; gap: 6px;">
-              <a href="{% url 'admin_manager_detail' m.pk %}" class="btn btn-secondary btn-sm">View</a>
+              <a href="{% url 'sales_head_branch_heads' m.pk %}" class="btn btn-primary btn-sm" title="View Branch Heads for this Sales Head">
+                Branch Heads &rarr;
+              </a>
+              {% if request.user.is_admin_user %}
               <a href="{% url 'admin_manager_edit' m.pk %}" class="btn btn-secondary btn-sm">Edit</a>
               <a href="{% url 'admin_manager_toggle_status' m.pk %}" class="btn btn-sm {% if m.is_active %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change this Sales Head's account status?">
                 {% if m.is_active %}Deactivate{% else %}Activate{% endif %}
               </a>
-              {% if request.user.is_admin_user %}
               <a href="{% url 'admin_manager_delete' m.pk %}" class="btn btn-outline-danger btn-sm">Delete</a>
               {% endif %}
             </div>
@@ -104,7 +112,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="9">
+          <td colspan="7">
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>

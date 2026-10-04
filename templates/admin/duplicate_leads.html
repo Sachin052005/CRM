@@ -10,11 +10,11 @@
     <div style="display: flex; align-items: center; gap: 12px;">
       <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">DUPLICATE LEADS</h1>
       <span id="groupCountBadge" class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.85rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; border: 1px solid #fde68a;">
-        {{ total_groups_count|default:total_duplicate_count|default:0 }} duplicate record{{ total_groups_count|default:total_duplicate_count|pluralize }} found
+        {{ total_duplicate_count|default:total_groups_count|default:0 }} duplicate record{{ total_duplicate_count|default:total_groups_count|pluralize }} found
       </span>
     </div>
     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; margin-bottom: 0;">
-      Cross-branch duplicate detection and single lead consolidation engine
+      Cross-branch 10-day duplicate detection and single lead consolidation engine
     </p>
   </div>
   <div class="page-actions" style="display: flex; gap: 10px; align-items: center;">
@@ -27,158 +27,132 @@
   </div>
 </div>
 
-<!-- DUPLICATE RECORDS SECTION (Section 13) -->
-<div style="margin-bottom: 32px;">
-  {% if duplicate_records %}
-  <div class="duplicate-records-list" style="display: flex; flex-direction: column; gap: 20px; max-width: 860px;">
-    {% for rec in duplicate_records %}
-    <div class="crm-card" id="cardRec-{{ rec.id }}" style="padding: 24px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: var(--shadow-sm); transition: border-color 0.2s ease;">
-      
-      <!-- Card Header -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--text-main);">
+<!-- UNIFIED DUPLICATE LEADS TABLE -->
+{% if duplicate_records %}
+<div class="crm-card" style="margin-bottom: 32px; overflow: hidden; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+  <div class="crm-card-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-card); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+      Duplicate Lead Submissions
+    </h3>
+    <span style="font-size: 0.85rem; color: var(--text-muted);">
+      Enforcing 10-day cross-branch deduplication rule
+    </span>
+  </div>
+
+  <div class="table-responsive" style="overflow-x: auto;">
+    <table class="crm-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+      <thead>
+        <tr style="background: #f8fafc; border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.775rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          <th style="padding: 12px 16px; font-weight: 700;">Student</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Phone</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Email</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Original Branch</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Duplicate Branch</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Original Submission</th>
+          <th style="padding: 12px 16px; font-weight: 700;">Duplicate Submission</th>
+          <th style="padding: 12px 16px; font-weight: 700; text-align: center;">Days Difference</th>
+          <th style="padding: 12px 16px; font-weight: 700; text-align: center;">Status</th>
+          <th style="padding: 12px 16px; font-weight: 700; text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rec in duplicate_records %}
+        <tr id="rowRec-{{ rec.id }}" style="border-bottom: 1px solid var(--border-color); transition: background-color 0.15s ease;">
+          <td style="padding: 14px 16px; font-weight: 600; color: var(--text-main);">
             {{ rec.name }}
-          </h3>
-          <span class="badge badge-duplicate" style="font-size: 0.8rem; padding: 4px 10px;">
-            {{ rec.status|default:'DUPLICATE' }}
-          </span>
-        </div>
-        <span style="font-size: 0.775rem; color: var(--text-muted); font-family: monospace;">
-          Duplicate Record #{{ rec.id }}
-        </span>
-      </div>
-
-      <!-- Warning Banner (Section 9 & 13) -->
-      {% if rec.is_cross_branch_10day or 'within 10 days' in rec.notes.lower %}
-      <div class="alert-warning-banner" style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; color: #92400e; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 1.1rem;">⚠</span>
-        <span>⚠ Same lead details detected in another branch within 10 days.</span>
-      </div>
-      {% elif rec.notes %}
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #94a3b8; color: #475569; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.875rem; margin-bottom: 16px;">
-        {{ rec.notes }}
-      </div>
-      {% endif %}
-
-      <!-- Card Details Grid -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 20px;">
-        <!-- Lead Contact Information -->
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <div>
-            <span style="color: var(--text-muted); font-size: 0.85rem;">Phone:</span>
-            <strong style="color: var(--text-main); font-size: 1rem; margin-left: 6px; font-family: monospace;">{{ rec.phone }}</strong>
-          </div>
-          <div>
-            <span style="color: var(--text-muted); font-size: 0.85rem;">Email:</span>
-            <span style="color: var(--text-main); font-size: 0.9rem; margin-left: 6px;">{{ rec.email|default:'N/A' }}</span>
-          </div>
-        </div>
-
-        <!-- Submission Branches Comparison (Section 13) -->
-        <div style="display: flex; flex-direction: column; gap: 8px; background: #f8fafc; padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid #e2e8f0;">
-          <div style="font-size: 0.85rem;">
-            <span style="color: var(--text-muted); font-weight: 600;">Original Branch:</span>
-            <strong style="color: #1e293b; margin-left: 6px;">{{ rec.original_branch }}</strong>
-            <span style="color: var(--text-muted); font-size: 0.775rem; display: block; margin-top: 2px;">
-              Submitted: {{ rec.original_date }}
+            {% if rec.is_cross_branch_10day %}
+            <span title="Cross-branch submission within 10 days" style="cursor: help; color: #f59e0b; margin-left: 4px;">⚠</span>
+            {% endif %}
+          </td>
+          <td style="padding: 14px 16px; font-family: monospace; color: var(--text-main);">
+            {{ rec.phone }}
+          </td>
+          <td style="padding: 14px 16px; color: var(--text-muted);">
+            {{ rec.email|default:'—' }}
+          </td>
+          <td style="padding: 14px 16px;">
+            <span style="font-weight: 600; color: #1e293b; background: #f1f5f9; padding: 3px 8px; border-radius: var(--radius-sm); font-size: 0.8rem;">
+              {{ rec.original_branch }}
             </span>
-          </div>
-          <div style="font-size: 0.85rem; border-top: 1px dashed #cbd5e1; padding-top: 6px; margin-top: 4px;">
-            <span style="color: var(--text-muted); font-weight: 600;">Duplicate Branch:</span>
-            <strong style="color: #b91c1c; margin-left: 6px;">{{ rec.duplicate_branch }}</strong>
-            <span style="color: var(--text-muted); font-size: 0.775rem; display: block; margin-top: 2px;">
-              Submitted: {{ rec.duplicate_date }}
+          </td>
+          <td style="padding: 14px 16px;">
+            <span style="font-weight: 600; color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: var(--radius-sm); font-size: 0.8rem;">
+              {{ rec.duplicate_branch }}
             </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Buttons (Section 13) -->
-      <div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding-top: 14px; border-top: 1px solid var(--border-color); flex-wrap: wrap;">
-        <!-- [ View Original Lead ] -->
-        <a 
-          href="{{ rec.original_lead_url }}" 
-          class="btn btn-outline-primary" 
-          id="btnViewOriginal-{{ rec.id }}" 
-          style="font-weight: 600; padding: 8px 18px; font-size: 0.875rem;"
-        >
-          [ View Original Lead ]
-        </a>
-
-        <!-- [ Keep Single Lead ] -->
-        <button 
-          type="button" 
-          class="btn btn-primary" 
-          id="btnKeep-{{ rec.id }}" 
-          onclick="keepSingleLead('{{ rec.lead_ids_str }}', '{{ rec.id }}', '{{ rec.name|escapejs }}')" 
-          style="font-weight: 600; padding: 8px 18px; font-size: 0.875rem;"
-        >
-          [ Keep Single Lead ]
-        </button>
-
-        <span id="msgSuccess-{{ rec.id }}" style="display: none; color: #15803d; font-size: 0.875rem; font-weight: 600; align-items: center; gap: 6px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-          Single unique lead record maintained
-        </span>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-
-  {% elif duplicate_groups %}
-  <!-- Legacy Duplicate Groups Display -->
-  <div class="duplicate-groups-list" style="display: flex; flex-direction: column; gap: 18px; max-width: 860px;">
-    {% for group in duplicate_groups %}
-    <div class="crm-card" id="cardGroup-{{ group.group_id }}" style="padding: 24px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: var(--shadow-sm);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-        <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-main);">
-          {{ group.group_label }}
-        </h3>
-        <span class="badge badge-duplicate">
-          DUPLICATE
-        </span>
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px;">
-        <div>
-          <div><span style="color: var(--text-muted); font-size: 0.875rem;">Name:</span> <strong style="color: var(--text-main); font-size: 1.05rem;">{{ group.name }}</strong></div>
-          <div style="margin-top: 4px;"><span style="color: var(--text-muted); font-size: 0.875rem;">Phone:</span> <strong style="color: var(--text-main); font-size: 1.05rem; font-family: monospace;">{{ group.phone }}</strong></div>
-          {% if group.email %}<div style="margin-top: 4px;"><span style="color: var(--text-muted); font-size: 0.875rem;">Email:</span> <span style="color: var(--text-main);">{{ group.email }}</span></div>{% endif %}
-        </div>
-        <div>
-          <div style="font-size: 0.775rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Detected Branches:</div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            {% for b_name in group.branches %}
-            <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 600; color: #1e293b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: var(--radius-sm); width: fit-content;">
-              {{ b_name }}
+          </td>
+          <td style="padding: 14px 16px; color: var(--text-muted); font-size: 0.825rem; white-space: nowrap;">
+            {{ rec.original_date }}
+          </td>
+          <td style="padding: 14px 16px; color: var(--text-muted); font-size: 0.825rem; white-space: nowrap;">
+            {{ rec.duplicate_date }}
+          </td>
+          <td style="padding: 14px 16px; text-align: center;">
+            {% if rec.days_difference <= 10.0 %}
+            <span class="badge" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 600; font-size: 0.775rem; padding: 3px 8px; border-radius: 9999px;">
+              {{ rec.days_difference_display }} (&le;10d)
+            </span>
+            {% else %}
+            <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 600; font-size: 0.775rem; padding: 3px 8px; border-radius: 9999px;">
+              {{ rec.days_difference_display }} (&gt;10d)
+            </span>
+            {% endif %}
+          </td>
+          <td style="padding: 14px 16px; text-align: center;">
+            {% if rec.days_difference <= 10.0 %}
+            <span class="badge" style="background: #fee2e2; color: #b91c1c; font-weight: 700; font-size: 0.775rem; padding: 4px 10px; border-radius: 9999px;">
+              DUPLICATE
+            </span>
+            {% else %}
+            <span class="badge" style="background: #ecfdf5; color: #059669; font-weight: 700; font-size: 0.775rem; padding: 4px 10px; border-radius: 9999px;">
+              RENEWAL
+            </span>
+            {% endif %}
+          </td>
+          <td style="padding: 14px 16px; text-align: right; white-space: nowrap;">
+            <div style="display: inline-flex; align-items: center; gap: 8px;">
+              <a 
+                href="{{ rec.original_lead_url }}" 
+                class="btn btn-sm btn-outline-primary" 
+                id="btnViewOriginal-{{ rec.id }}" 
+                style="padding: 5px 10px; font-size: 0.8rem; font-weight: 600;"
+              >
+                View Original
+              </a>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-primary" 
+                id="btnKeep-{{ rec.id }}" 
+                onclick="keepSingleLead('{{ rec.lead_ids_str }}', '{{ rec.id }}', '{{ rec.name|escapejs }}')" 
+                style="padding: 5px 10px; font-size: 0.8rem; font-weight: 600;"
+              >
+                Keep Single Lead
+              </button>
             </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-      <div style="display: flex; align-items: center; gap: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
-        <button type="button" class="btn btn-primary" id="btnKeep-{{ group.group_id }}" onclick="keepSingleLead('{{ group.lead_ids_str }}', '{{ group.group_id }}', '{{ group.name|escapejs }}')" style="font-weight: 600; padding: 8px 20px;">
-          [ Keep Single Lead ]
-        </button>
-      </div>
-    </div>
-    {% endfor %}
+            <div id="msgSuccess-{{ rec.id }}" style="display: none; color: #15803d; font-size: 0.775rem; font-weight: 600; margin-top: 4px; text-align: right;">
+              ✓ Consolidated
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-
-  {% else %}
-  <!-- Clean Empty State -->
-  <div class="crm-card" style="text-align: center; padding: 56px 24px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color); max-width: 860px;">
-    <div style="width: 56px; height: 56px; border-radius: 50%; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-    </div>
-    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">No Duplicate Lead Records Found</h3>
-    <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 480px; margin: 0 auto 20px;">
-      All lead records across all branches and acquisition sources are currently unique. Real-time duplicate protection is actively running on all connected spreadsheets.
-    </p>
-    <a href="{% url 'admin_offline_leads' %}" class="btn btn-secondary" style="font-weight: 600;">Go to Offline Leads</a>
-  </div>
-  {% endif %}
 </div>
+
+{% else %}
+<!-- CLEAN EMPTY STATE -->
+<div class="crm-card" style="text-align: center; padding: 56px 24px; background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color); max-width: 860px; margin: 0 auto;">
+  <div style="width: 56px; height: 56px; border-radius: 50%; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+  </div>
+  <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">No Duplicate Lead Records Found</h3>
+  <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 480px; margin: 0 auto 20px;">
+    All lead records across all branches and acquisition sources are currently unique. Real-time duplicate protection is actively running on all connected spreadsheets.
+  </p>
+  <a href="{% url 'admin_offline_leads' %}" class="btn btn-secondary" style="font-weight: 600;">Go to Offline Leads</a>
+</div>
+{% endif %}
 
 <!-- FLOATING TOAST -->
 <div id="statusToast" style="display: none; position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #fff; padding: 14px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 2000; font-size: 0.875rem; align-items: center; gap: 12px; border-left: 4px solid #10b981; min-width: 280px; max-width: 420px; animation: slideIn 0.3s ease;">
@@ -228,7 +202,7 @@ function getCookie(name) {
 function keepSingleLead(leadIds, elementId, leadName) {
   const btn = document.getElementById(`btnKeep-${elementId}`);
   const msgSuccess = document.getElementById(`msgSuccess-${elementId}`);
-  const card = document.getElementById(`cardRec-${elementId}`) || document.getElementById(`cardGroup-${elementId}`);
+  const row = document.getElementById(`rowRec-${elementId}`);
 
   if (btn) btn.disabled = true;
 
@@ -247,14 +221,14 @@ function keepSingleLead(leadIds, elementId, leadName) {
     if (data.success) {
       if (btn) {
         btn.textContent = '✓ Kept Single Lead';
-        btn.className = 'btn btn-secondary';
+        btn.className = 'btn btn-sm btn-secondary';
         btn.disabled = true;
       }
       if (msgSuccess) {
-        msgSuccess.style.display = 'inline-flex';
+        msgSuccess.style.display = 'block';
       }
-      if (card) {
-        card.style.borderColor = '#10b981';
+      if (row) {
+        row.style.backgroundColor = '#f0fdf4';
       }
       showToast(data.message || `Consolidated duplicate records! Kept single unique lead for ${leadName}.`);
     } else {

@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from . import hierarchy_views
 
 urlpatterns = [
     path('login/', views.general_login, name='login'),
@@ -34,4 +35,21 @@ urlpatterns = [
     path('telecaller/login/', views.telecaller_login, name='telecaller_login'),
     path('telecaller/register/', views.telecaller_register, name='telecaller_register'),
     path('telecaller/logout/', views.logout_view, name='telecaller_logout'),
+
+    # Progressive Hierarchy Routes (Levels 1 - 5)
+    path('sales-heads/', hierarchy_views.hierarchy_sales_heads_list, name='hierarchy_sales_heads_list'),
+    path('sales-heads/<int:sales_head_id>/branch-heads/', hierarchy_views.hierarchy_branch_heads_list, name='sales_head_branch_heads'),
+    path('sales-heads/<int:sales_head_id>/branch-heads/view/', hierarchy_views.hierarchy_branch_heads_list, name='hierarchy_sales_head_branch_heads'),
+    
+    path('branch-heads/', hierarchy_views.hierarchy_branch_heads_list, name='hierarchy_branch_heads_list'),
+    path('branch-heads/<int:branch_head_id>/counselors/', hierarchy_views.hierarchy_counselors_list, name='branch_head_counselors'),
+    path('branch-heads/<int:branch_head_id>/counselors/view/', hierarchy_views.hierarchy_counselors_list, name='hierarchy_branch_head_counselors'),
+    
+    path('counselors/', hierarchy_views.hierarchy_counselors_list, name='hierarchy_counselors_list'),
+    path('counselors/<int:counselor_id>/telecallers/', hierarchy_views.hierarchy_telecallers_list, name='counselor_telecallers'),
+    path('counselors/<int:counselor_id>/telecallers/view/', hierarchy_views.hierarchy_telecallers_list, name='hierarchy_counselor_telecallers'),
+    
+    path('telecallers/', hierarchy_views.hierarchy_telecallers_list, name='hierarchy_telecallers_list'),
+    path('telecallers/<int:telecaller_id>/leads/', hierarchy_views.hierarchy_telecaller_leads, name='telecaller_leads'),
+    path('telecallers/<int:telecaller_id>/leads/view/', hierarchy_views.hierarchy_telecaller_leads, name='hierarchy_telecaller_leads'),
 ]

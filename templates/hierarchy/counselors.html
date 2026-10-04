@@ -6,15 +6,28 @@
 <div class="hierarchy-breadcrumbs">
   <a href="{% url 'hierarchy_sales_heads_list' %}">Sales Heads</a>
   <span class="separator">&gt;</span>
-  <a href="{% url 'admin_branch_heads_list' %}">Branch Heads</a>
-  <span class="separator">&gt;</span>
-  <span class="current">Counselors</span>
+  {% if sales_head %}
+    <a href="{% url 'sales_head_branch_heads' sales_head.id %}">{{ sales_head.get_full_name|default:sales_head.username }}</a>
+    <span class="separator">&gt;</span>
+  {% endif %}
+  {% if branch_head %}
+    <span class="current">{{ branch_head.get_full_name|default:branch_head.username }}</span>
+  {% else %}
+    <span class="current">Counselors</span>
+  {% endif %}
 </div>
 
 <div class="page-header">
   <div class="page-title-group">
     <h1>Counselors</h1>
-    <p>All Counselors across branches &bull; Level 3</p>
+    <p>
+      {% if branch_head %}
+        Counselors under Branch Head: <strong>{{ branch_head.get_full_name|default:branch_head.username }}</strong>
+        {% if branch_head.branch %} ({{ branch_head.branch.name }}){% endif %} &bull; Level 3
+      {% else %}
+        All Counselors &bull; Level 3
+      {% endif %}
+    </p>
   </div>
   {% if request.user.is_admin_user %}
   <div class="page-actions">
@@ -40,18 +53,13 @@
         <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
       </select>
     </div>
-    <div class="filter-col">
-      <label>Branch</label>
-      <select name="branch" class="form-select">
-        <option value="">All Branches</option>
-        {% for b in branches %}
-        <option value="{{ b.id }}" {% if branch_filter == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
     <div style="display: flex; gap: 8px;">
       <button type="submit" class="btn btn-primary">Apply</button>
-      <a href="{% url 'admin_counselors_list' %}" class="btn btn-secondary">Reset</a>
+      {% if branch_head %}
+      <a href="{% url 'branch_head_counselors' branch_head.id %}" class="btn btn-secondary">Reset</a>
+      {% else %}
+      <a href="{% url 'hierarchy_counselors_list' %}" class="btn btn-secondary">Reset</a>
+      {% endif %}
     </div>
   </form>
 </div>
@@ -66,7 +74,6 @@
           <th>Phone</th>
           <th>Branch</th>
           <th>Status</th>
-          <th>Created Date</th>
           <th style="text-align: right;">Action</th>
         </tr>
       </thead>
@@ -74,19 +81,28 @@
         {% for c in page_obj %}
         <tr>
           <td>
-            <strong><a href="{% url 'counselor_telecallers' c.pk %}" style="color: var(--primary); text-decoration: none;">{{ c.get_full_name|default:c.username }}</a></strong>
+            <strong><a href="{% url 'counselor_telecallers' c.id %}" style="color: var(--primary); text-decoration: none; font-size: 0.95rem;">{{ c.get_full_name|default:c.username }}</a></strong>
             <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ c.username }}</div>
           </td>
-          <td>{{ c.email }}</td>
+          <td>{{ c.email|default:"-" }}</td>
           <td>{{ c.phone|default:"-" }}</td>
-          <td>{{ c.branch.name|default:"-" }}</td>
           <td>
-            {% if c.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
+            {% if c.branch %}
+            <strong>{{ c.branch.name }}</strong>
+            {% else %}
+            <span style="color: var(--text-muted);">Unassigned</span>
+            {% endif %}
           </td>
-          <td>{{ c.date_joined|date:"M d, Y" }}</td>
+          <td>
+            {% if c.is_active %}
+            <span class="badge badge-active">Active</span>
+            {% else %}
+            <span class="badge badge-inactive">Inactive</span>
+            {% endif %}
+          </td>
           <td style="text-align: right;">
             <div style="display: inline-flex; gap: 6px;">
-              <a href="{% url 'counselor_telecallers' c.pk %}" class="btn btn-primary btn-sm" title="View Telecallers under this Counselor">
+              <a href="{% url 'counselor_telecallers' c.id %}" class="btn btn-primary btn-sm" title="View Telecallers under this Counselor">
                 Telecallers &rarr;
               </a>
               {% if request.user.is_admin_user %}
@@ -97,13 +113,10 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7">
+          <td colspan="6">
             <div class="empty-state">
-              <div class="empty-state-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
-              </div>
               <h4>No Counselors Found</h4>
-              <p>No counselors match your query.</p>
+              <p>No Counselors exist under this branch.</p>
             </div>
           </td>
         </tr>

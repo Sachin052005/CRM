@@ -68,12 +68,16 @@ class User(AbstractUser):
 
     def clean(self):
         super().clean()
-        if self.counselor_id:
-            if self.role != UserRole.TELECALLER:
-                raise ValidationError({'counselor': "Only Telecallers can have an assigned counselor."})
+        if self.role == UserRole.TELECALLER:
+            if not self.counselor_id:
+                raise ValidationError({'counselor': "A Telecaller must be assigned to a Counselor."})
             if self.counselor_id == self.id:
                 raise ValidationError({'counselor': "A user cannot be their own counselor."})
             if self.counselor.role != UserRole.COUNSELOR:
                 raise ValidationError({'counselor': "Assigned counselor must have the COUNSELOR role."})
+            if not self.counselor.is_active and not self.pk:
+                raise ValidationError({'counselor': "Assigned counselor must be active."})
             if self.branch_id and self.counselor.branch_id and self.branch_id != self.counselor.branch_id:
                 raise ValidationError({'counselor': "Assigned counselor must belong to the same branch as the telecaller."})
+        elif self.counselor_id:
+            raise ValidationError({'counselor': "Only Telecallers can have an assigned counselor."})

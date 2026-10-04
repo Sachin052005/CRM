@@ -53,63 +53,39 @@
   </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-  <div class="crm-card">
-    <div class="crm-card-header">
-      <h3>Counselors</h3>
-    </div>
-    <div class="table-responsive">
-      <table class="crm-table">
-        <thead>
-          <tr>
-            <th>Counselor</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for c in counselors %}
-          <tr>
-            <td>
-              <strong><a href="{% url 'admin_counselor_detail' c.pk %}">{{ c.get_full_name|default:c.username }}</a></strong>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ c.username }}</div>
-            </td>
-            <td>{% if c.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="2" style="text-align: center; color: var(--text-muted); padding: 20px;">No counselors in this branch yet.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+<div class="crm-card">
+  <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="margin: 0;">Branch Counselors</h3>
+    <a href="{% url 'hierarchy_branch_head_counselors' branch_head.pk %}" class="btn btn-secondary btn-sm">View in Hierarchy &rarr;</a>
   </div>
-
-  <div class="crm-card">
-    <div class="crm-card-header">
-      <h3>Telecallers</h3>
-    </div>
-    <div class="table-responsive">
-      <table class="crm-table">
-        <thead>
-          <tr>
-            <th>Telecaller</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for t in telecallers %}
-          <tr>
-            <td>
-              <strong><a href="{% url 'admin_telecaller_detail' t.pk %}">{{ t.get_full_name|default:t.username }}</a></strong>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ t.username }}</div>
-            </td>
-            <td>{% if t.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="2" style="text-align: center; color: var(--text-muted); padding: 20px;">No telecallers in this branch yet.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Counselor</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in counselors %}
+        <tr>
+          <td>
+            <strong><a href="{% url 'hierarchy_counselor_telecallers' c.pk %}">{{ c.get_full_name|default:c.username }}</a></strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ c.username }}</div>
+          </td>
+          <td>{{ c.email }}</td>
+          <td>{% if c.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}</td>
+          <td style="text-align: right;">
+            <a href="{% url 'hierarchy_counselor_telecallers' c.pk %}" class="btn btn-secondary btn-sm">View Telecallers &rarr;</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">No counselors in this branch yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 

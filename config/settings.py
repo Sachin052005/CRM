@@ -70,13 +70,36 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database configuration (SQLite for development)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Database configuration (MySQL CRM database loaded securely from environment)
+DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.mysql')
+DB_NAME = os.getenv('DB_NAME', 'CRM')
+DB_USER = os.getenv('DB_USER', 'root')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
+DB_PORT = os.getenv('DB_PORT', '3306')
+
+if DB_ENGINE == 'django.db.backends.sqlite3' or (not DB_PASSWORD and not os.getenv('DB_NAME')):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': DB_NAME,
+            'USER': DB_USER,
+            'PASSWORD': DB_PASSWORD,
+            'HOST': DB_HOST,
+            'PORT': DB_PORT,
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
+    }
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.User'
@@ -184,6 +207,3 @@ GOOGLE_SERVICE_ACCOUNT_PATH = Path(
     os.getenv('GOOGLE_SERVICE_ACCOUNT_PATH', str(BASE_DIR / 'credentials' / 'service_account.json'))
 )
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', '').strip()
-
-
-

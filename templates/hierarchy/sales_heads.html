@@ -1,24 +1,22 @@
 {% extends 'base.html' %}
-{% block title %}Branch Heads - TECHPANDA CRM{% endblock %}
+{% block title %}Sales Heads - TECHPANDA CRM{% endblock %}
 
 {% block content %}
 <!-- Progressive Hierarchy Breadcrumbs -->
 <div class="hierarchy-breadcrumbs">
-  <a href="{% url 'hierarchy_sales_heads_list' %}">Sales Heads</a>
-  <span class="separator">&gt;</span>
-  <span class="current">Branch Heads</span>
+  <span class="current">Sales Heads</span>
 </div>
 
 <div class="page-header">
   <div class="page-title-group">
-    <h1>Branch Heads</h1>
-    <p>Manage branch administrators across branches &bull; Level 2</p>
+    <h1>Sales Heads</h1>
+    <p>Manage Sales Head accounts across branches &bull; Level 1</p>
   </div>
   {% if request.user.is_admin_user %}
   <div class="page-actions">
-    <a href="{% url 'admin_branch_head_create' %}" class="btn btn-primary">
+    <a href="{% url 'admin_manager_create' %}" class="btn btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      Add Branch Head
+      Add Sales Head
     </a>
   </div>
   {% endif %}
@@ -39,7 +37,7 @@
       </select>
     </div>
     <div class="filter-col">
-      <label>Branch</label>
+      <label>Branch Access</label>
       <select name="branch" class="form-select">
         <option value="">All Branches</option>
         {% for b in branches %}
@@ -49,7 +47,7 @@
     </div>
     <div style="display: flex; gap: 8px;">
       <button type="submit" class="btn btn-primary">Apply</button>
-      <a href="{% url 'admin_branch_heads_list' %}" class="btn btn-secondary">Reset</a>
+      <a href="{% url 'hierarchy_sales_heads_list' %}" class="btn btn-secondary">Reset</a>
     </div>
   </form>
 </div>
@@ -59,42 +57,53 @@
     <table class="crm-table">
       <thead>
         <tr>
-          <th>Branch Head</th>
+          <th>Sales Head</th>
           <th>Email</th>
           <th>Phone</th>
-          <th>Branch</th>
+          <th>Accessible Branches</th>
           <th>Status</th>
-          <th>Created Date</th>
-          <th style="text-align: right;">Actions</th>
+          <th style="text-align: right;">Action</th>
         </tr>
       </thead>
       <tbody>
-        {% for bh in page_obj %}
+        {% for sh in page_obj %}
         <tr>
           <td>
-            <strong><a href="{% url 'branch_head_counselors' bh.pk %}" style="color: var(--primary); text-decoration: none;">{{ bh.get_full_name|default:bh.username }}</a></strong>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ bh.username }}</div>
+            <strong><a href="{% url 'sales_head_branch_heads' sh.id %}" style="color: var(--primary); text-decoration: none; font-size: 0.95rem;">{{ sh.get_full_name|default:sh.username }}</a></strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ sh.username }}</div>
           </td>
-          <td>{{ bh.email }}</td>
-          <td>{{ bh.phone|default:"-" }}</td>
-          <td>{{ bh.branch.name|default:"-" }}</td>
+          <td>{{ sh.email|default:"-" }}</td>
+          <td>{{ sh.phone|default:"-" }}</td>
           <td>
-            {% if bh.is_active %}
+            {% with access_list=sh.branch_access.all %}
+              {% if access_list %}
+                <span title="{% for a in access_list %}{{ a.branch.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                  <strong>{{ access_list|length }} branch{{ access_list|length|pluralize }}</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">
+                    ({% for a in access_list %}{{ a.branch.name }}{% if not forloop.last %}, {% endif %}{% endfor %})
+                  </span>
+                </span>
+              {% else %}
+                <span style="color: var(--text-muted);">No branches assigned</span>
+              {% endif %}
+            {% endwith %}
+          </td>
+          <td>
+            {% if sh.is_active %}
             <span class="badge badge-active">Active</span>
             {% else %}
             <span class="badge badge-inactive">Inactive</span>
             {% endif %}
           </td>
-          <td>{{ bh.date_joined|date:"M d, Y" }}</td>
           <td style="text-align: right;">
             <div style="display: inline-flex; gap: 6px;">
-              <a href="{% url 'branch_head_counselors' bh.pk %}" class="btn btn-primary btn-sm" title="View Counselors under this Branch Head">
-                Counselors &rarr;
+              <a href="{% url 'sales_head_branch_heads' sh.id %}" class="btn btn-primary btn-sm" title="View Branch Heads for this Sales Head">
+                Branch Heads &rarr;
               </a>
               {% if request.user.is_admin_user %}
-              <a href="{% url 'admin_branch_head_edit' bh.pk %}" class="btn btn-secondary btn-sm">Edit</a>
-              <a href="{% url 'admin_branch_head_toggle_status' bh.pk %}" class="btn btn-sm {% if bh.is_active %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change this branch head's account status?">
-                {% if bh.is_active %}Deactivate{% else %}Activate{% endif %}
+              <a href="{% url 'admin_manager_edit' sh.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{% url 'admin_manager_toggle_status' sh.pk %}" class="btn btn-sm {% if sh.is_active %}btn-secondary{% else %}btn-success{% endif %}">
+                {% if sh.is_active %}Deactivate{% else %}Activate{% endif %}
               </a>
               {% endif %}
             </div>
@@ -102,13 +111,10 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7">
+          <td colspan="6">
             <div class="empty-state">
-              <div class="empty-state-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
-              </div>
-              <h4>No Branch Heads Found</h4>
-              <p>No branch heads match your query. Click "Add Branch Head" to onboard a branch administrator.</p>
+              <h4>No Sales Heads Found</h4>
+              <p>No Sales Heads match your current search.</p>
             </div>
           </td>
         </tr>

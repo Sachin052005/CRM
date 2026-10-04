@@ -64,7 +64,10 @@ HEADER_PATTERNS = {
     ],
     'product': [
         'interested course', 'interested product', 'course', 'product',
-        'program', 'interested in', 'course interested', 'course name', 'stream'
+        'program', 'interested in', 'course interested', 'course name', 'stream',
+        'wat course are you looking for ?', 'wat course are you looking for',
+        'what course are you looking for ?', 'what course are you looking for',
+        'courses'
     ],
     'branch': [
         'branch', 'center', 'branch center', 'location', 'city',
@@ -77,7 +80,11 @@ HEADER_PATTERNS = {
         'status', 'lead status'
     ],
     'notes': [
-        'notes', 'remarks', 'comments', 'feedback', 'message', 'query'
+        'notes', 'remarks', 'comments', 'feedback', 'message', 'query',
+        'comments / questions', 'comments/questions',
+        'what you looking for?', 'what you looking for',
+        'what is your current status?', 'what is your current status',
+        'requirement', 'conservation step', 'qualification'
     ],
     'gender': [
         'gender', 'sex'
@@ -222,7 +229,7 @@ def assign_lead_to_team(lead: Lead, branch: Branch = None, method: str = 'Automa
             lead.assigned_telecaller = assigned_telecaller
 
 
-def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None):
+def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None, headers=None, rows=None):
     """
     Full live synchronization engine for a GoogleSheetConnection:
     1. Reads rows from Google Sheet via OAuth API client in a single bulk request.
@@ -247,24 +254,54 @@ def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None):
             'errors': ["Connection is paused."]
         }
 
-    try:
-        headers, rows = fetch_sheet_data(connection.spreadsheet_id, connection.worksheet_name)
-    except Exception as e:
-        error_msg = str(e)
-        logger.error(f"Google Sheets synchronization failed for '{connection.name}': {error_msg}")
+    if headers is None and rows is None:
+        try:
+            headers, rows = fetch_sheet_data(connection.spreadsheet_id, connection.worksheet_name)
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Google Sheets synchronization failed for '{connection.name}': {error_msg}")
+            GoogleSheetSyncHistory.objects.create(
+                connection=connection,
+                rows_checked=0,
+                new_leads=0,
+                updated_leads=0,
+                skipped=0,
+                failed=0,
+                status='Failed',
+                error_summary=f"Spreadsheet read failure: {error_msg}"
+            )
+            connection.last_sync_time = timezone.now()
+            connection.last_sync_status = 'Failed'
+            connection.last_sync_error = error_msg
+            connection.save(update_fields=['last_sync_time', 'last_sync_status', 'last_sync_error'])
+            return {
+                'status': 'Failed',
+                'rows_checked': 0,
+                'new_leads': 0,
+                'updated_leads': 0,
+                'skipped': 0,
+                'failed': 1,
+                'errors': [error_msg]
+            }
+
+    # Validate that headers were retrieved
+    if not headers or not any(headers):
+        error_msg = f"Unable to read spreadsheet columns/headers for '{connection.name}'. Connection remains active; will retry on next cycle."
+        logger.warning(error_msg)
         GoogleSheetSyncHistory.objects.create(
             connection=connection,
             rows_checked=0,
             new_leads=0,
             updated_leads=0,
             skipped=0,
-            failed=0,
+            failed=1,
             status='Failed',
-            error_summary=f"Spreadsheet read failure: {error_msg}"
+            error_summary=error_msg
         )
         connection.last_sync_time = timezone.now()
         connection.last_sync_status = 'Failed'
-        connection.save(update_fields=['last_sync_time', 'last_sync_status'])
+        connection.last_sync_error = error_msg
+        connection.save(update_fields=['last_sync_time', 'last_sync_status', 'last_sync_error'])
         return {
             'status': 'Failed',
             'rows_checked': 0,
@@ -275,12 +312,31 @@ def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None):
             'errors': [error_msg]
         }
 
-    # If field_mapping is empty, auto-detect from headers
-    mapping = connection.field_mapping or {}
+    # Reconcile field mapping dynamically against actual headers (case-insensitively)
+    mapping = dict(connection.field_mapping or {})
     detected = detect_column_mapping(headers)
+    header_lookup = {normalize_header(h): h for h in headers}
+
+    reconciled_mapping = {}
+    for k, v in mapping.items():
+        if k in ['headers', 'rows']:
+            continue
+        if v and isinstance(v, str):
+            norm_v = normalize_header(v)
+            if v in headers:
+                reconciled_mapping[k] = v
+            elif norm_v in header_lookup:
+                reconciled_mapping[k] = header_lookup[norm_v]
+            elif k in detected and detected[k] in headers:
+                reconciled_mapping[k] = detected[k]
+        elif k in detected:
+            reconciled_mapping[k] = detected[k]
+
     for k, v in detected.items():
-        if k not in mapping or not mapping[k]:
-            mapping[k] = v
+        if k not in reconciled_mapping or not reconciled_mapping[k]:
+            reconciled_mapping[k] = v
+
+    mapping = reconciled_mapping
 
     total_rows = len(rows)
     new_leads = 0
@@ -309,6 +365,32 @@ def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None):
     synced_col = mapping.get('synced')
     gender_col = mapping.get('gender')
 
+    def get_row_val(r_data, mapped_col, *fallbacks):
+        if mapped_col and mapped_col in r_data and r_data[mapped_col] is not None:
+            v = str(r_data[mapped_col]).strip()
+            if v:
+                return v
+        for fb in fallbacks:
+            if fb and fb in r_data and r_data[fb] is not None:
+                v = str(r_data[fb]).strip()
+                if v:
+                    return v
+        norm_r = {}
+        for rk, rv in r_data.items():
+            if rk is not None:
+                nk = normalize_header(str(rk))
+                if nk and nk not in norm_r:
+                    norm_r[nk] = rv
+        search_keys = [mapped_col] + list(fallbacks)
+        for sk in search_keys:
+            if sk:
+                nsk = normalize_header(str(sk))
+                if nsk in norm_r and norm_r[nsk] is not None:
+                    v = str(norm_r[nsk]).strip()
+                    if v:
+                        return v
+        return ''
+
     for loop_idx, r in enumerate(rows, start=2):
         if isinstance(r, (list, tuple)):
             r_dict = {'_row_index': loop_idx}
@@ -321,22 +403,22 @@ def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None):
         row_id = f"{connection.spreadsheet_id}_{connection.worksheet_name}_row_{row_idx}"
         seen_row_identifiers.add(row_id)
 
-        # Extract values
-        name_val = (r.get(name_col) if name_col else '') or r.get('Name') or r.get('Lead Name') or r.get('Full Name') or ''
+        # Extract values case-insensitively with intelligent fallbacks
+        name_val = get_row_val(r, name_col, 'Full name', 'Full Name', 'Name', 'Lead Name', 'Student Name', 'Candidate Name')
         if not name_val and (first_name_col or last_name_col):
-            fn = str(r.get(first_name_col, '') if first_name_col else '').strip()
-            ln = str(r.get(last_name_col, '') if last_name_col else '').strip()
+            fn = get_row_val(r, first_name_col, 'First Name', 'FirstName', 'First')
+            ln = get_row_val(r, last_name_col, 'Last Name', 'LastName', 'Last')
             name_val = f"{fn} {ln}".strip()
 
-        phone_val = (r.get(phone_col) if phone_col else '') or r.get('Phone') or r.get('Mobile') or r.get('Phone Number') or ''
-        alt_phone_val = (r.get(alt_phone_col) if alt_phone_col else '') or r.get('Alternate Phone') or r.get('Alt Phone') or ''
-        email_val = (r.get(email_col) if email_col else '') or r.get('Email') or ''
-        product_val = (r.get(product_col) if product_col else '') or r.get('Product') or r.get('Course') or ''
-        branch_val = (r.get(branch_col) if branch_col else '') or r.get('Branch') or ''
-        channel_val = (r.get(channel_col) if channel_col else '') or r.get('Channel') or ''
-        status_val = (r.get(status_col) if status_col else '') or r.get('Status') or ''
-        notes_val = (r.get(notes_col) if notes_col else '') or r.get('Notes') or r.get('Remarks') or ''
-        gender_val = (r.get(gender_col) if gender_col else '') or r.get('Gender') or ''
+        phone_val = get_row_val(r, phone_col, 'Phone number', 'Phone Number', 'Mobile Number', 'Mobile number', 'Phone', 'Mobile', 'Contact Number', 'Contact')
+        alt_phone_val = get_row_val(r, alt_phone_col, 'Alternate Phone', 'Alt Phone', 'Alternate Mobile', 'Secondary Phone')
+        email_val = get_row_val(r, email_col, 'Email', 'Email Address', 'Mail Id', 'Mail')
+        product_val = get_row_val(r, product_col, 'Product', 'Course', 'Wat course are you looking for ?', 'What course are you looking for?', 'Interested Course')
+        branch_val = get_row_val(r, branch_col, 'Branch', 'City', 'Preferred Branch', 'Location', 'Center')
+        channel_val = get_row_val(r, channel_col, 'Channel', 'Lead Source', 'Source', 'Platform')
+        status_val = get_row_val(r, status_col, 'Status', 'Lead Status')
+        notes_val = get_row_val(r, notes_col, 'Notes', 'Remarks', 'Comments / Questions', 'What you looking for?', 'What is your current status?')
+        gender_val = get_row_val(r, gender_col, 'Gender', 'Sex')
 
         name_val = str(name_val).strip()
         phone_val = str(phone_val).strip()
@@ -366,13 +448,26 @@ def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None):
             else:
                 notes_val = f"[Form Data]: {extra_notes_text}"
 
-        # Row validation: Name and at least Phone or Email are required
-        if not name_val or (not phone_val and not email_val):
-            failed += 1
-            if not name_val:
-                errors.append(f"Row {row_idx}: Name is missing.")
+        # Skip completely empty trailing or placeholder rows without failing the sync
+        if not name_val and not phone_val and not email_val:
+            skipped += 1
+            continue
+
+        # If lead has valid contact (phone or email) but name is omitted, assign clean identifiable name
+        if not name_val:
+            if phone_val:
+                clean_p = re.sub(r'[^0-9]', '', str(phone_val))
+                disp_p = clean_p[-10:] if len(clean_p) >= 10 else clean_p
+                name_val = f"{connection.name} Lead ({disp_p})"
+            elif email_val:
+                name_val = f"{connection.name} Lead ({email_val.split('@')[0]})"
             else:
-                errors.append(f"Row {row_idx}: Both Phone and Email are missing.")
+                name_val = f"{connection.name} Lead"
+
+        # Row validation: At least Phone or Email is required
+        if not phone_val and not email_val:
+            failed += 1
+            errors.append(f"Row {row_idx}: Both Phone and Email are missing.")
             continue
 
         # If phone is missing but email exists, set a placeholder so model requirement is satisfied
@@ -553,19 +648,20 @@ def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None):
                 )
                 new_leads += 1
 
-    # Check for deleted rows from sheet (RowMappings in DB not seen in current sheet)
-    deleted_mappings = GoogleSheetRowMapping.objects.filter(
-        connection=connection,
-        source_status='Active'
-    ).exclude(row_identifier__in=seen_row_identifiers)
+    # Check for deleted rows from sheet only if rows were actually returned
+    if total_rows > 0:
+        deleted_mappings = GoogleSheetRowMapping.objects.filter(
+            connection=connection,
+            source_status='Active'
+        ).exclude(row_identifier__in=seen_row_identifiers)
 
-    if deleted_mappings.exists():
-        deleted_count = deleted_mappings.count()
-        deleted_mappings.update(source_status='Removed from source', updated_at=timezone.now())
-        errors.append(f"{deleted_count} lead(s) marked 'Removed from source' (preserved in CRM).")
+        if deleted_mappings.exists():
+            deleted_count = deleted_mappings.count()
+            deleted_mappings.update(source_status='Removed from source', updated_at=timezone.now())
+            errors.append(f"{deleted_count} lead(s) marked 'Removed from source' (preserved in CRM).")
 
     # Finalize Sync History
-    sync_status = 'Completed'
+    sync_status = 'Success'
     if failed > 0 and (new_leads > 0 or updated_leads > 0 or skipped > 0):
         sync_status = 'Completed with Errors'
     elif failed > 0 and new_leads == 0 and updated_leads == 0:
@@ -583,11 +679,16 @@ def sync_google_sheet(connection: GoogleSheetConnection, triggered_by=None):
         error_summary="\n".join(errors[:50])
     )
 
+    save_mapping = dict(mapping or {})
+    save_mapping['headers'] = headers
+    save_mapping['rows'] = rows
+    connection.field_mapping = save_mapping
     connection.last_sync_time = timezone.now()
     connection.last_sync_status = sync_status
     connection.last_sync_error = "\n".join(errors[:5]) if errors else ""
     connection.total_leads_imported = connection.row_mappings.count()
-    connection.save(update_fields=['last_sync_time', 'last_sync_status', 'last_sync_error', 'total_leads_imported', 'updated_at'])
+    connection.connection_status = 'ACTIVE'
+    connection.save(update_fields=['field_mapping', 'last_sync_time', 'last_sync_status', 'last_sync_error', 'total_leads_imported', 'connection_status', 'updated_at'])
 
     logger.info(
         f"Google Sheets synchronization completed for '{connection.name}': "

@@ -18,51 +18,8 @@
   <div style="display: flex; gap: 10px; align-items: center;">
     <button type="button" class="btn btn-primary" onclick="openAddModal()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      + Add Telecaller Assignment
+      Add Telecaller Assignment
     </button>
-  </div>
-</div>
-
-<!-- SECTION 1: ASSIGNMENT METHOD -->
-<div class="crm-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary-color);">
-  <div class="crm-card-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-    <div>
-      <h3 style="font-size: 1rem; font-weight: 700; margin: 0 0 4px 0; color: var(--text-main);">ASSIGNMENT METHOD</h3>
-      <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">
-        Choose whether new leads should be distributed by percentage weighting or by fixed lead count limit.
-      </p>
-    </div>
-    <span class="badge" id="currentMethodBadge" style="background: #e0f2fe; color: #0369a1; font-weight: 600;">
-      Active: {{ config.get_assignment_method_display }}
-    </span>
-  </div>
-  <div class="crm-card-body" style="padding: 20px;">
-    <form id="methodForm" method="POST" action="{% url 'admin_lead_setup' %}" onsubmit="handleMethodSubmit(event)">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="update_method">
-      
-      <div style="display: flex; flex-direction: column; gap: 14px; max-width: 600px;">
-        <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px 16px; border: 1px solid {% if config.assignment_method == 'PERCENTAGE' %}var(--primary-color){% else %}var(--border-color){% endif %}; border-radius: 8px; background: {% if config.assignment_method == 'PERCENTAGE' %}#f0fdf4{% else %}#fff{% endif %}; transition: all 0.2s ease;">
-          <input type="radio" name="assignment_method" value="PERCENTAGE" {% if config.assignment_method == 'PERCENTAGE' %}checked{% endif %} onchange="submitMethodChange(this)" style="margin-top: 3px; accent-color: var(--primary-color);">
-          <div>
-            <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-main);">Percentage Based</div>
-            <div style="font-size: 0.825rem; color: var(--text-muted); margin-top: 2px;">
-              Distributes incoming branch leads proportionally according to each Telecaller's configured assignment percentage (e.g., 50% vs 30% vs 20%).
-            </div>
-          </div>
-        </label>
-
-        <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; padding: 12px 16px; border: 1px solid {% if config.assignment_method == 'COUNT' %}var(--primary-color){% else %}var(--border-color){% endif %}; border-radius: 8px; background: {% if config.assignment_method == 'COUNT' %}#f0fdf4{% else %}#fff{% endif %}; transition: all 0.2s ease;">
-          <input type="radio" name="assignment_method" value="COUNT" {% if config.assignment_method == 'COUNT' %}checked{% endif %} onchange="submitMethodChange(this)" style="margin-top: 3px; accent-color: var(--primary-color);">
-          <div>
-            <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-main);">Number Of Leads Based</div>
-            <div style="font-size: 0.825rem; color: var(--text-muted); margin-top: 2px;">
-              Assigns leads sequentially up to the configured Lead Count limit for each Telecaller in that branch.
-            </div>
-          </div>
-        </label>
-      </div>
-    </form>
   </div>
 </div>
 
@@ -118,7 +75,6 @@
             <th>Telecaller</th>
             <th style="width: 170px;">Assignment %</th>
             <th style="width: 140px; text-align: center;">Expected Leads</th>
-            <th style="width: 140px;">Lead Limit</th>
             <th style="width: 150px; text-align: center;">Status</th>
             <th style="text-align: right; width: 90px;">Actions</th>
           </tr>
@@ -183,21 +139,6 @@
               </span>
             </td>
 
-            <!-- Lead Count Limit -->
-            <td>
-              <input 
-                type="number" 
-                name="lead_count_{{ item.telecaller.id }}" 
-                id="count-{{ b.branch.id }}-{{ item.telecaller.id }}" 
-                value="{{ item.lead_count }}" 
-                min="0" 
-                class="form-control tc-count-input" 
-                data-branch="{{ b.branch.id }}"
-                {% if not item.is_active %}disabled style="opacity: 0.5;"{% endif %}
-                style="max-width: 130px;"
-              >
-            </td>
-
             <!-- Status Indicator -->
             <td style="text-align: center; vertical-align: middle;">
               <span class="badge" id="status-badge-{{ b.branch.id }}-{{ item.telecaller.id }}" style="{% if item.is_active %}background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;{% else %}background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;{% endif %} font-weight: 600; font-size: 0.775rem; padding: 4px 10px; border-radius: 9999px;">
@@ -210,7 +151,7 @@
               <button 
                 type="button" 
                 class="btn btn-secondary btn-sm" 
-                onclick="editSetupModal('{{ item.setup.id|default:'' }}', '{{ b.branch.id }}', '{{ item.telecaller.id }}', '{{ item.percentage }}', '{{ item.lead_count }}')"
+                onclick="editSetupModal('{{ item.setup.id|default:'' }}', '{{ b.branch.id }}', '{{ item.telecaller.id }}', '{{ item.percentage }}')"
                 style="padding: 4px 10px; font-size: 0.8rem;"
               >
                 Edit
@@ -219,8 +160,8 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">
-              No telecallers assigned to {{ b.branch.name }} yet. Click <strong>+ Add Telecaller Assignment</strong> to assign.
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+              No telecallers assigned to {{ b.branch.name }} yet. Click <strong>Add Telecaller Assignment</strong> to assign.
             </td>
           </tr>
           {% endfor %}
@@ -303,7 +244,7 @@
         </select>
       </div>
 
-      <div style="margin-bottom: 16px;">
+      <div style="margin-bottom: 24px;">
         <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
           Assignment Percentage
         </label>
@@ -311,15 +252,6 @@
           <input type="number" name="assignment_percentage" id="modalPercentageInput" class="form-control" placeholder="Enter Percentage" min="0" max="100" required>
           <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-weight: 600; color: #94a3b8;">%</span>
         </div>
-        <small style="color: var(--text-muted); font-size: 0.775rem;">Used when Percentage Based assignment is selected.</small>
-      </div>
-
-      <div style="margin-bottom: 24px;">
-        <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
-          Lead Limit
-        </label>
-        <input type="number" name="lead_count" id="modalCountInput" class="form-control" placeholder="Enter Number Of Leads" min="0" required>
-        <small style="color: var(--text-muted); font-size: 0.775rem;">Used when Number Of Leads Based assignment is selected.</small>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
@@ -383,10 +315,6 @@ function recalcBranchTotal(branchId) {
         pctInput.style.opacity = '0.5';
       }
       if (expectedEl) expectedEl.textContent = '0';
-      if (countInput) {
-        countInput.disabled = true;
-        countInput.style.opacity = '0.5';
-      }
       if (statusBadge) {
         statusBadge.textContent = 'Excluded';
         statusBadge.style.background = '#f1f5f9';
@@ -443,19 +371,17 @@ function openAddModal() {
   document.getElementById('modalTitle').textContent = 'Add Telecaller Assignment';
   document.getElementById('modalBranchSelect').value = '';
   document.getElementById('modalTelecallerSelect').value = '';
-  document.getElementById('modalPercentageInput').value = '40';
-  document.getElementById('modalCountInput').value = '40';
+  document.getElementById('modalPercentageInput').value = '50';
   filterTelecallersByBranch();
   document.getElementById('leadSetupModal').style.display = 'flex';
 }
 
-function editSetupModal(setupId, branchId, telecallerId, pct, count) {
+function editSetupModal(setupId, branchId, telecallerId, pct) {
   document.getElementById('modalTitle').textContent = 'Edit Telecaller Assignment';
   document.getElementById('modalBranchSelect').value = branchId;
   filterTelecallersByBranch();
   document.getElementById('modalTelecallerSelect').value = telecallerId;
   document.getElementById('modalPercentageInput').value = pct || '0';
-  document.getElementById('modalCountInput').value = count || '0';
   document.getElementById('leadSetupModal').style.display = 'flex';
 }
 
@@ -477,36 +403,6 @@ function filterTelecallersByBranch() {
       opt.style.display = 'none';
     }
   });
-}
-
-function submitMethodChange(radioEl) {
-  const form = document.getElementById('methodForm');
-  const fd = new FormData(form);
-
-  fetch(form.action, {
-    method: 'POST',
-    headers: {
-      'X-Requested-With': 'XMLHttpRequest'
-    },
-    body: fd
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      const badge = document.getElementById('currentMethodBadge');
-      if (badge) {
-        badge.textContent = 'Active: ' + (radioEl.value === 'PERCENTAGE' ? 'Percentage Based' : 'Number Of Leads Based');
-      }
-      window.location.reload();
-    }
-  })
-  .catch(err => {
-    form.submit();
-  });
-}
-
-function handleMethodSubmit(e) {
-  // Allow default submit
 }
 </script>
 {% endblock %}

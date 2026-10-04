@@ -60,91 +60,61 @@ def assign_new_lead(lead, branch=None, source="Google Sheet", triggered_by=None)
             .select_related('telecaller', 'telecaller__branch')
         )
 
-        method = LeadSetupConfig.get_current_method()
+        # Strictly percentage-based distribution with mandatory 100% total validation
+        valid_setups = [s for s in setups if s.assignment_percentage > 0]
+        total_pct = sum(s.assignment_percentage for s in valid_setups)
 
-        # Check percentage-based distribution
-        if method == AssignmentMethod.PERCENTAGE:
-            valid_setups = [s for s in setups if s.assignment_percentage > 0]
-            total_pct = sum(s.assignment_percentage for s in valid_setups)
-
-            # Strict 100% check
-            if not valid_setups:
-                lead.branch = target_branch
-                lead.assignment_status = 'Pending Assignment'
-                lead.pending_assignment_reason = f"No active telecallers or allocation configured for branch '{target_branch.name}'."
-                lead.assigned_telecaller = None
-                if lead.pk:
-                    lead.save(update_fields=['branch', 'assignment_status', 'pending_assignment_reason', 'assigned_telecaller', 'updated_at'])
-                else:
-                    lead.save()
-                log_activity(
-                    user=triggered_by,
-                    action="Lead Assignment Pending",
-                    description=f"Lead '{lead.name}' marked Pending Assignment: No active telecallers or allocation configured for branch '{target_branch.name}'.",
-                    object_type="Lead",
-                    object_id=getattr(lead, 'pk', None)
-                )
-                return False
-
-            if total_pct != 100:
-                lead.branch = target_branch
-                lead.assignment_status = 'Pending Assignment'
-                lead.pending_assignment_reason = f"Branch '{target_branch.name}' telecaller allocation total is {total_pct}% (must equal exactly 100%)."
-                lead.assigned_telecaller = None
-                if lead.pk:
-                    lead.save(update_fields=['branch', 'assignment_status', 'pending_assignment_reason', 'assigned_telecaller', 'updated_at'])
-                else:
-                    lead.save()
-                log_activity(
-                    user=triggered_by,
-                    action="Lead Assignment Pending",
-                    description=f"Lead '{lead.name}' marked Pending Assignment: Branch '{target_branch.name}' allocation total is {total_pct}% (must equal 100%).",
-                    object_type="Lead",
-                    object_id=getattr(lead, 'pk', None)
-                )
-                return False
-
-            # Strict Weighted Distribution Algorithm (Largest Positive Allocation Gap)
-            # Cumulative total assigned to the active allocation group
-            total_assigned = sum(s.current_leads_assigned for s in valid_setups)
-            next_total = total_assigned + 1
-
-            def allocation_score(s):
-                target_count = next_total * (s.assignment_percentage / 100.0)
-                actual_count = s.current_leads_assigned
-                gap = target_count - actual_count
-                # Tie breakers: larger gap, higher percentage, lower current count, lower id
-                return (gap, s.assignment_percentage, -s.current_leads_assigned, -s.id)
-
-            best_setup = max(valid_setups, key=allocation_score)
-            selected_telecaller = best_setup.telecaller
-
-        elif method == AssignmentMethod.COUNT:
-            # Number of leads based
-            valid_setups = [s for s in setups if s.lead_count > 0]
-            if not valid_setups:
-                lead.branch = target_branch
-                lead.assignment_status = 'Pending Assignment'
-                lead.pending_assignment_reason = f"No active telecallers with lead quota in branch '{target_branch.name}'."
-                lead.assigned_telecaller = None
-                if lead.pk:
-                    lead.save(update_fields=['branch', 'assignment_status', 'pending_assignment_reason', 'assigned_telecaller', 'updated_at'])
-                else:
-                    lead.save()
-                return False
-
-            # Pick telecaller below quota with lowest assigned count
-            below_quota = [s for s in valid_setups if s.current_leads_assigned < s.lead_count]
-            if below_quota:
-                below_quota.sort(key=lambda s: (s.current_leads_assigned, -s.lead_count, s.id))
-                best_setup = below_quota[0]
+        # Strict 100% check
+        if not valid_setups:
+            lead.branch = target_branch
+            lead.assignment_status = 'Pending Assignment'
+            lead.pending_assignment_reason = f"No active telecallers or allocation configured for branch '{target_branch.name}'."
+            lead.assigned_telecaller = None
+            if lead.pk:
+                lead.save(update_fields=['branch', 'assignment_status', 'pending_assignment_reason', 'assigned_telecaller', 'updated_at'])
             else:
-                valid_setups.sort(key=lambda s: (s.current_leads_assigned, s.id))
-                best_setup = valid_setups[0]
-            selected_telecaller = best_setup.telecaller
-        else:
-            best_setup = setups[0] if setups else None
-            selected_telecaller = best_setup.telecaller if best_setup else None
+                lead.save()
+            log_activity(
+                user=triggered_by,
+                action="Lead Assignment Pending",
+                description=f"Lead '{lead.name}' marked Pending Assignment: No active telecallers or allocation configured for branch '{target_branch.name}'.",
+                object_type="Lead",
+                object_id=getattr(lead, 'pk', None)
+            )
+            return False
+
+        if total_pct != 100:
+            lead.branch = target_branch
+            lead.assignment_status = 'Pending Assignment'
+            lead.pending_assignment_reason = f"Branch '{target_branch.name}' telecaller allocation total is {total_pct}% (must equal exactly 100%)."
+            lead.assigned_telecaller = None
+            if lead.pk:
+                lead.save(update_fields=['branch', 'assignment_status', 'pending_assignment_reason', 'assigned_telecaller', 'updated_at'])
+            else:
+                lead.save()
+            log_activity(
+                user=triggered_by,
+                action="Lead Assignment Pending",
+                description=f"Lead '{lead.name}' marked Pending Assignment: Branch '{target_branch.name}' allocation total is {total_pct}% (must equal 100%).",
+                object_type="Lead",
+                object_id=getattr(lead, 'pk', None)
+            )
+            return False
+
+        # Strict Weighted Distribution Algorithm (Largest Positive Allocation Gap)
+        # Cumulative total assigned to the active allocation group
+        total_assigned = sum(s.current_leads_assigned for s in valid_setups)
+        next_total = total_assigned + 1
+
+        def allocation_score(s):
+            target_count = next_total * (s.assignment_percentage / 100.0)
+            actual_count = s.current_leads_assigned
+            gap = target_count - actual_count
+            # Tie breakers: larger gap, higher percentage, lower current count, lower id
+            return (gap, s.assignment_percentage, -s.current_leads_assigned, -s.id)
+
+        best_setup = max(valid_setups, key=allocation_score)
+        selected_telecaller = best_setup.telecaller
 
         if not selected_telecaller:
             lead.branch = target_branch
