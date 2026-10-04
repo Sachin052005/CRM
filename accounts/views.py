@@ -48,7 +48,7 @@ def _process_login(request, expected_role=None, template_name='registration/logi
                     messages.error(request, f"Access denied. '{username}' is not registered with Admin privileges.")
                     return render(request, template_name, {'form': form, 'portal_title': portal_title, 'portal_role': expected_role})
                 elif expected_role == UserRole.SALES_HEAD and not user.is_sales_head_user:
-                    messages.error(request, f"Access denied. '{username}' is not a Manager/Counsellor.")
+                    messages.error(request, f"Access denied. '{username}' is not a Sales Head.")
                     return render(request, template_name, {'form': form, 'portal_title': portal_title, 'portal_role': expected_role})
                 elif expected_role == UserRole.TELECALLER and not user.is_telecaller_user:
                     messages.error(request, f"Access denied. '{username}' is not a Telecaller.")
@@ -100,7 +100,7 @@ def manager_login(request):
         request,
         expected_role=UserRole.SALES_HEAD,
         template_name='registration/manager_login.html',
-        portal_title='Manager / Counsellor Portal'
+        portal_title='Sales Head Portal'
     )
 
 def telecaller_login(request):
@@ -121,20 +121,20 @@ def manager_register(request):
             user = form.save()
             log_activity(
                 user=user,
-                action="Manager Registered",
-                description=f"New Manager account registered: '{user.username}' ({user.email}).",
+                action="Sales Head Registered",
+                description=f"New Sales Head account registered: '{user.username}' ({user.email}).",
                 object_type="User",
                 object_id=str(user.pk),
                 request=request
             )
-            messages.success(request, "Manager registration successful! You can now log in.")
+            messages.success(request, "Sales Head registration successful! You can now log in.")
             return redirect('manager_login')
     else:
         form = ManagerRegistrationForm()
 
     return render(request, 'registration/manager_register.html', {
         'form': form,
-        'portal_title': 'Register as Manager / Counsellor'
+        'portal_title': 'Register as Sales Head'
     })
 
 def telecaller_register(request):

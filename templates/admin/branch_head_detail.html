@@ -70,7 +70,7 @@
           {% for c in counselors %}
           <tr>
             <td>
-              <strong>{{ c.get_full_name|default:c.username }}</strong>
+              <strong><a href="{% url 'admin_counselor_detail' c.pk %}">{{ c.get_full_name|default:c.username }}</a></strong>
               <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ c.username }}</div>
             </td>
             <td>{% if c.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}</td>
@@ -99,7 +99,7 @@
           {% for t in telecallers %}
           <tr>
             <td>
-              <strong>{{ t.get_full_name|default:t.username }}</strong>
+              <strong><a href="{% url 'admin_telecaller_detail' t.pk %}">{{ t.get_full_name|default:t.username }}</a></strong>
               <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ t.username }}</div>
             </td>
             <td>{% if t.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}</td>

@@ -167,7 +167,7 @@ def drive_disconnect(request, connection_id):
     Disconnects a Google Drive folder source.
     """
     if not (request.user.is_admin_user or request.user.is_sales_head_user):
-        messages.error(request, "Access denied: Only Admins or Managers can disconnect Drive folders.")
+        messages.error(request, "Access denied: Only Admins or Sales Heads can disconnect Drive folders.")
         return redirect('drive_dashboard')
 
     connection = get_object_or_404(DriveConnection, pk=connection_id)

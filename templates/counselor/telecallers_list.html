@@ -21,6 +21,7 @@
           <th>Calls Logged</th>
           <th>Pending Follow-ups</th>
           <th>Status</th>
+          <th style="text-align: right;">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -38,10 +39,13 @@
           <td>
             {% if t.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
           </td>
+          <td style="text-align: right;">
+            <a href="{% url 'counselor_telecaller_leads' t.pk %}" class="btn btn-secondary btn-sm">View Leads</a>
+          </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7">
+          <td colspan="8">
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>

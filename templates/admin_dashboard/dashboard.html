@@ -8,10 +8,12 @@
     <p>Real-time analytics and management control center for TECHPANDA CRM</p>
   </div>
   <div class="page-actions">
-    <a href="{% url 'admin_manager_create' %}" class="btn btn-secondary btn-sm">+ Add Manager</a>
-    <a href="{% url 'admin_telecaller_create' %}" class="btn btn-secondary btn-sm">+ Add Telecaller</a>
-    <a href="{% url 'admin_lead_create' %}" class="btn btn-primary btn-sm">+ Add Lead</a>
-    <a href="{% url 'admin_leads_import' %}" class="btn btn-secondary btn-sm">Import Leads</a>
+    <a href="{% url 'admin_manager_create' %}" class="btn btn-secondary btn-sm"> Add Sales Head</a>
+    <a href="{% url 'admin_branch_head_create' %}" class="btn btn-secondary btn-sm"> Add Branch Head</a>
+    <a href="{% url 'admin_counselor_create' %}" class="btn btn-secondary btn-sm"> Add Counselor</a>
+    <a href="{% url 'admin_telecaller_create' %}" class="btn btn-secondary btn-sm"> Add Telecaller</a>
+    <a href="{% url 'admin_lead_create' %}" class="btn btn-primary btn-sm"> Add Lead</a>
+    <a href="{% url 'admin_leads_import' %}" class="btn btn-secondary btn-sm">Import Reports</a>
     <a href="{% url 'admin_reports' %}" class="btn btn-secondary btn-sm">Reports</a>
   </div>
 </div>
@@ -28,9 +30,9 @@
       <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
     </div>
     <div class="filter-col">
-      <label>Manager</label>
+      <label>Sales Head</label>
       <select name="manager" class="form-select">
-        <option value="">All Managers</option>
+        <option value="">All Sales Heads</option>
         {% for m in managers %}
         <option value="{{ m.id }}" {% if manager_filter == m.id|stringformat:"i" %}selected{% endif %}>{{ m.get_full_name|default:m.username }}</option>
         {% endfor %}
@@ -113,7 +115,7 @@
 
   <div class="kpi-card">
     <div class="kpi-info">
-      <h4>Total Managers</h4>
+      <h4>Total Sales Heads</h4>
       <div class="kpi-value">{{ total_managers }}</div>
     </div>
     <div class="kpi-icon-wrap purple">
@@ -224,17 +226,17 @@
 
 <!-- Performance Tables (Section 15) -->
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-  <!-- Manager Performance -->
+  <!-- Sales Head Performance -->
   <div class="crm-card">
     <div class="crm-card-header">
-      <h3>Manager Performance</h3>
-      <a href="{% url 'admin_managers_list' %}" class="btn btn-secondary btn-sm">All Managers</a>
+      <h3>Sales Head Performance</h3>
+      <a href="{% url 'admin_managers_list' %}" class="btn btn-secondary btn-sm">All Sales Heads</a>
     </div>
     <div class="table-responsive">
       <table class="crm-table">
         <thead>
           <tr>
-            <th>Manager</th>
+            <th>Sales Head</th>
             <th>Leads</th>
             <th>Calls</th>
             <th>Follow-ups</th>
@@ -273,7 +275,7 @@
         <thead>
           <tr>
             <th>Telecaller</th>
-            <th>Manager</th>
+            <th>Sales Head</th>
             <th>Leads</th>
             <th>Calls</th>
             <th>Follow-ups</th>
@@ -315,7 +317,7 @@
           <tr>
             <th>Lead</th>
             <th>Channel</th>
-            <th>Manager</th>
+            <th>Sales Head</th>
             <th>Telecaller</th>
             <th>Status</th>
             <th style="text-align: right;">Action</th>
@@ -396,7 +398,7 @@
         {% for a in recent_activities %}
         <tr>
           <td><strong>{{ a.user.get_full_name|default:a.user.username }}</strong></td>
-          <td><span class="badge {% if a.user.role == 'ADMIN' %}badge-admin{% elif a.user.role == 'MANAGER' %}badge-manager{% else %}badge-telecaller{% endif %}">{{ a.user.role }}</span></td>
+          <td><span class="badge {% if a.user.role == 'ADMIN' %}badge-admin{% elif a.user.role == 'SALES_HEAD' %}badge-manager{% else %}badge-telecaller{% endif %}">{{ a.user.role }}</span></td>
           <td><strong>{{ a.action }}</strong></td>
           <td>{{ a.description }}</td>
           <td>{{ a.timestamp|date:"M d, Y H:i" }}</td>

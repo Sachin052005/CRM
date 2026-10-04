@@ -6,7 +6,7 @@
 
 document.addEventListener('DOMContentLoaded', function () {
   initPasswordToggles();
-  initPasswordStrengthMeters();
+  initPasswordMatchValidation();
 });
 
 function initPasswordToggles() {
@@ -64,6 +64,51 @@ function initPasswordToggles() {
 
       wrapper.appendChild(toggleBtn);
     }
+  });
+}
+
+function initPasswordMatchValidation() {
+  // Live "passwords match" / "do not match" feedback only - the visual strength meter/rule
+  // bar is intentionally not rendered on this flow, but the underlying complexity check
+  // still runs server-side via Django's AUTH_PASSWORD_VALIDATORS (see config/settings.py)
+  // and accounts/validators.py ComplexityValidator, so real validation is unaffected.
+  const passwordInputs = document.querySelectorAll(
+    'input[name="password"], input[name="new_password1"], input[id$="new_password1"], input[data-meter="true"]'
+  );
+
+  passwordInputs.forEach(pwdInput => {
+    if (pwdInput.dataset.matchInitialized) return;
+    pwdInput.dataset.matchInitialized = 'true';
+
+    const form = pwdInput.closest('form');
+    const confirmInput = form ? form.querySelector('input[name="confirm_password"], input[name="new_password2"]') : null;
+    if (!confirmInput) return;
+
+    const matchMsgBox = document.createElement('div');
+    matchMsgBox.style.fontSize = '0.775rem';
+    matchMsgBox.style.marginTop = '4px';
+    matchMsgBox.style.fontWeight = '500';
+    const confirmWrapper = confirmInput.closest('.pwd-toggle-wrapper') || confirmInput;
+    confirmWrapper.parentNode.insertBefore(matchMsgBox, confirmWrapper.nextSibling);
+
+    function checkMatch() {
+      const cVal = confirmInput.value;
+      const pVal = pwdInput.value;
+
+      if (!cVal) {
+        matchMsgBox.innerHTML = '';
+        return;
+      }
+
+      if (pVal === cVal) {
+        matchMsgBox.innerHTML = '<span style="color: #10b981;">✓ Passwords match</span>';
+      } else {
+        matchMsgBox.innerHTML = '<span style="color: #ef4444;">✕ Passwords do not match</span>';
+      }
+    }
+
+    pwdInput.addEventListener('input', checkMatch);
+    confirmInput.addEventListener('input', checkMatch);
   });
 }
 

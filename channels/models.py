@@ -20,6 +20,7 @@ class Channel(models.Model):
 class LeadConnection(models.Model):
     class ConnectionType(models.TextChoices):
         META = 'Meta', 'Meta / Facebook'
+        INSTAGRAM = 'Instagram', 'Instagram'
         WEBSITE = 'Website', 'Website'
         GOOGLE_SHEETS = 'Google Sheets', 'Google Sheets'
         WHATSAPP = 'WhatsApp', 'WhatsApp'

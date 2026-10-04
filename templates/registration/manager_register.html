@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Register as Manager - TECHPANDA CRM{% endblock %}
+{% block title %}Register as Sales Head - TECHPANDA CRM{% endblock %}
 
 {% block content %}
 <div style="min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
@@ -8,8 +8,8 @@
       <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); margin-bottom: 12px;">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
       </div>
-      <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main);">Manager Registration</h2>
-      <p style="color: var(--text-muted); font-size: 0.875rem;">Create a Manager / Counsellor account</p>
+      <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main);">Sales Head Registration</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">Create a Sales Head account</p>
     </div>
 
     <form method="POST">
@@ -64,7 +64,7 @@
     </form>
 
     <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); text-align: center; font-size: 0.825rem; color: var(--text-muted);">
-      Already registered? <a href="{% url 'manager_login' %}" style="font-weight: 600;">Sign in to Manager Portal</a>
+      Already registered? <a href="{% url 'manager_login' %}" style="font-weight: 600;">Sign in to Sales Head Portal</a>
     </div>
   </div>
 </div>

@@ -317,7 +317,7 @@ class TelecallerLeadAssignmentE2ETestCase(TestCase):
         # Check table contents
         content = resp.content.decode('utf-8')
         self.assertIn("Telecaller", content)
-        self.assertIn("Manager", content)
+        self.assertIn("Sales Head", content)
         self.assertIn("Arun", content)
         self.assertIn("Priya", content)
 

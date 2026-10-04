@@ -92,7 +92,7 @@
     </div>
     <div class="crm-card-body">
       <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px; font-size: 0.9rem; margin-bottom: 16px;">
-        <span style="color: var(--text-muted);">Assigned Manager:</span>
+        <span style="color: var(--text-muted);">Assigned Sales Head:</span>
         <span>
           {% if lead.assigned_manager %}
           <a href="{% url 'admin_manager_detail' lead.assigned_manager.pk %}"><strong>{{ lead.assigned_manager.get_full_name|default:lead.assigned_manager.username }}</strong></a>

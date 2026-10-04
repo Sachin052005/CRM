@@ -12,9 +12,9 @@
     <h1 style="display: flex; align-items: center; gap: 10px;">
       {{ connection.name }}
       {% if connection.is_active %}
-        <span class="badge" style="background:#d1fae5; color:#065f46; font-size: 0.75rem;">Active</span>
+        <span class="badge badge-active">Active</span>
       {% else %}
-        <span class="badge" style="background:#fee2e2; color:#991b1b; font-size: 0.75rem;">Inactive</span>
+        <span class="badge badge-inactive">Inactive</span>
       {% endif %}
     </h1>
     <p style="margin-top: 4px;">
@@ -26,7 +26,7 @@
   </div>
   <div class="page-actions" style="display: flex; gap: 10px;">
     <a href="{% url 'admin_offline_leads' %}" class="btn btn-secondary">
-      &larr; Back to Offline Leads
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Back to Offline Leads
     </a>
   </div>
 </div>
@@ -60,11 +60,11 @@
           </td>
           <td>
             {% if history.status == 'SUCCESS' %}
-              <span class="badge" style="background:#d1fae5; color:#065f46; font-weight:600;">Success</span>
+              <span class="badge badge-success">Success</span>
             {% elif history.status == 'PARTIAL' %}
-              <span class="badge" style="background:#fef3c7; color:#92400e; font-weight:600;">Partial</span>
+              <span class="badge badge-paused">Partial</span>
             {% elif history.status == 'FAILED' %}
-              <span class="badge" style="background:#fee2e2; color:#991b1b; font-weight:600;">Failed</span>
+              <span class="badge badge-failed">Failed</span>
             {% else %}
               <span class="badge">{{ history.status }}</span>
             {% endif %}

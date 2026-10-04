@@ -14,7 +14,7 @@
   </div>
   <div class="page-actions" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
     <a href="{% url 'admin_offline_leads_list' %}" class="btn btn-secondary">
-      &larr; Offline Leads
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Offline Leads
     </a>
     <a href="{% url 'admin_lead_create' %}" class="btn btn-primary">
       + Add Lead
@@ -55,9 +55,9 @@
       <input type="text" name="search" class="form-control" placeholder="Search name, phone, notes..." value="{{ search_query }}">
     </div>
     <div class="filter-col" style="flex: 1 1 140px;">
-      <label>Manager</label>
+      <label>Sales Head</label>
       <select name="manager" class="form-select">
-        <option value="">All Managers</option>
+        <option value="">All Sales Heads</option>
         {% for m in managers %}
         <option value="{{ m.id }}" {% if manager_filter == m.id|stringformat:"i" %}selected{% endif %}>{{ m.get_full_name|default:m.username }}</option>
         {% endfor %}
@@ -107,7 +107,7 @@
           <th>Phone</th>
           <th>Course</th>
           <th>Source</th>
-          <th>Manager</th>
+          <th>Sales Head</th>
           <th>Telecaller</th>
           <th>Status</th>
           <th style="text-align: right;">Actions</th>

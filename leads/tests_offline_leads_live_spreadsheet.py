@@ -99,19 +99,19 @@ class OfflineLeadsLiveSpreadsheetTests(TestCase):
         for h in sample_headers:
             self.assertIn(f"<th>{h}</th>", content)
 
-        # Data rows (with phone masked as 98765xxxxx)
+        # Data rows (actual phone number displayed, not masked - see master prompt Section 28/52)
         self.assertIn("Arun Kumar", content)
-        self.assertIn("98765xxxxx", content)
+        self.assertIn("9876543210", content)
         self.assertIn("arun@gmail.com", content)
         self.assertIn("Python", content)
 
         self.assertIn("Priya", content)
-        self.assertIn("91234xxxxx", content)
+        self.assertIn("9123456780", content)
         self.assertIn("priya@gmail.com", content)
         self.assertIn("Data Science", content)
 
         self.assertIn("Karthik", content)
-        self.assertIn("99887xxxxx", content)
+        self.assertIn("9988776655", content)
         self.assertIn("karthik@gmail.com", content)
         self.assertIn("Django", content)
 
@@ -195,7 +195,7 @@ class OfflineLeadsLiveSpreadsheetTests(TestCase):
         self.assertEqual(api_res2.status_code, 200)
         data2 = api_res2.json()
         self.assertEqual(data2['total_rows'], 3)
-        self.assertIn(['Karthik', '99887xxxxx'], data2['rows'])
+        self.assertIn(['Karthik', '9988776655'], data2['rows'])
 
     @patch('leads.views.fetch_sheet_data')
     def test_section_6_only_connected_spreadsheet_data_strictly_isolated(self, mock_fetch):
@@ -255,9 +255,10 @@ class OfflineLeadsLiveSpreadsheetTests(TestCase):
 
         sheet_url = "https://docs.google.com/spreadsheets/d/5FxiMVsDisconnect/edit"
         self.client.post(reverse('admin_google_sheet_connect'), {'spreadsheet_url': sheet_url})
+        conn = GoogleSheetConnection.objects.get(spreadsheet_id='5FxiMVsDisconnect')
 
-        # Disconnect
-        disc_res = self.client.post(reverse('admin_offline_leads_disconnect'))
+        # Disconnect (connection-specific - disconnect must always target one connection_id)
+        disc_res = self.client.post(reverse('admin_offline_leads_disconnect'), {'connection_id': conn.id})
         self.assertEqual(disc_res.status_code, 200)
         self.assertTrue(disc_res.json()['success'])
         self.assertFalse(disc_res.json()['is_connected'])

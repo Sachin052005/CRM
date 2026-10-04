@@ -154,9 +154,9 @@ class OfflineLeadsPrompt7Tests(TestCase):
         Automatically Assigned Leads
 
         Name | Phone | Branch | Status
-        Arun Kumar | 98765xxxxx | T. Nagar | New
-        Vijay | 99876xxxxx | T. Nagar | New
-        Siva | 98761xxxxx | T. Nagar | Follow-up
+        Arun Kumar | 9876543210 | T. Nagar | New
+        Vijay | 9987654321 | T. Nagar | New
+        Siva | 9876123456 | T. Nagar | Follow-up
 
         Total Assigned Leads: 3
 
@@ -191,13 +191,13 @@ class OfflineLeadsPrompt7Tests(TestCase):
         self.assertIn("Arun Kumar", content)
         self.assertIn("Vijay", content)
         self.assertIn("Siva", content)
-        self.assertIn("98765xxxxx", content)
-        self.assertIn("99876xxxxx", content)
-        self.assertIn("98761xxxxx", content)
+        self.assertIn("9876543210", content)
+        self.assertIn("9987654321", content)
+        self.assertIn("9876123456", content)
         self.assertIn("T. Nagar", content)
 
         # Telecallers must NOT see leads assigned to other Telecallers (Meena, Suresh)
         self.assertNotIn("Priya", content)
         self.assertNotIn("Karthik", content)
-        self.assertNotIn("91234xxxxx", content)
-        self.assertNotIn("99887xxxxx", content)
+        self.assertNotIn("9123456780", content)
+        self.assertNotIn("9988776655", content)

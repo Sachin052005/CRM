@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}Managers - TECHPANDA CRM{% endblock %}
+{% block title %}Sales Heads - TECHPANDA CRM{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div class="page-title-group">
-    <h1>Managers & Counsellors</h1>
-    <p>Manage team leads, counselors, and supervisor accounts</p>
+    <h1>Sales Heads</h1>
+    <p>Manage Sales Head accounts across branches</p>
   </div>
   <div class="page-actions">
     <a href="{% url 'admin_manager_create' %}" class="btn btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      Add Manager
+      Add Sales Head
     </a>
   </div>
 </div>
@@ -50,7 +50,7 @@
     <table class="crm-table">
       <thead>
         <tr>
-          <th>Manager</th>
+          <th>Sales Head</th>
           <th>Email</th>
           <th>Phone</th>
           <th>Branches</th>
@@ -93,9 +93,12 @@
             <div style="display: inline-flex; gap: 6px;">
               <a href="{% url 'admin_manager_detail' m.pk %}" class="btn btn-secondary btn-sm">View</a>
               <a href="{% url 'admin_manager_edit' m.pk %}" class="btn btn-secondary btn-sm">Edit</a>
-              <a href="{% url 'admin_manager_toggle_status' m.pk %}" class="btn btn-sm {% if m.is_active %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change this manager's account status?">
+              <a href="{% url 'admin_manager_toggle_status' m.pk %}" class="btn btn-sm {% if m.is_active %}btn-secondary{% else %}btn-success{% endif %}" data-confirm="Are you sure you want to change this Sales Head's account status?">
                 {% if m.is_active %}Deactivate{% else %}Activate{% endif %}
               </a>
+              {% if request.user.is_admin_user %}
+              <a href="{% url 'admin_manager_delete' m.pk %}" class="btn btn-outline-danger btn-sm">Delete</a>
+              {% endif %}
             </div>
           </td>
         </tr>
@@ -106,8 +109,8 @@
               <div class="empty-state-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
               </div>
-              <h4>No Managers Found</h4>
-              <p>No managers match your query. Click "Add Manager" to onboard a team lead.</p>
+              <h4>No Sales Heads Found</h4>
+              <p>No Sales Heads match your query. Click "Add Sales Head" to onboard one.</p>
             </div>
           </td>
         </tr>

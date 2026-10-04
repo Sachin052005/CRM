@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}{{ telecaller.get_full_name|default:telecaller.username }} - Leads - TECHPANDA CRM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title-group">
+    <h1>{{ telecaller.get_full_name|default:telecaller.username }}</h1>
+    <p>Telecaller &bull; @{{ telecaller.username }} &bull; Leads assigned to this Telecaller</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'counselor_telecallers_list' %}" class="btn btn-secondary">Back to My Telecallers</a>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="crm-table">
+      <thead>
+        <tr>
+          <th>Lead</th>
+          <th>Phone</th>
+          <th>Channel</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ld in leads %}
+        <tr>
+          <td><strong>{{ ld.name }}</strong></td>
+          <td>{{ ld.phone }}</td>
+          <td>{{ ld.channel.name|default:"-" }}</td>
+          <td><span class="badge badge-{{ ld.status|lower|slugify }}">{{ ld.status }}</span></td>
+          <td>{{ ld.created_at|date:"M d, Y" }}</td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px; align-items: center;">
+              <form method="POST" action="{% url 'counselor_lead_reassign' ld.pk %}" style="display: inline-flex; gap: 4px; align-items: center;">
+                {% csrf_token %}
+                <select name="telecaller_id" class="form-select" style="padding: 4px 8px; font-size: 0.8rem;" required>
+                  <option value="">Reassign to...</option>
+                  {% for ot in other_telecallers %}
+                  <option value="{{ ot.pk }}">{{ ot.get_full_name|default:ot.username }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-secondary btn-sm">Reassign</button>
+              </form>
+              <form method="POST" action="{% url 'counselor_lead_unassign' ld.pk %}" style="display: inline;" data-confirm="Unassign '{{ ld.name|escapejs }}' from {{ telecaller.get_full_name|default:telecaller.username|escapejs }}? The lead will remain in the CRM as Pending Assignment.">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm">Unassign</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <p>No leads currently assigned to this Telecaller.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

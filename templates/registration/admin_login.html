@@ -22,8 +22,8 @@
         <label class="form-label">Password</label>
         {{ form.password }}
       </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+      <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 20px;">
+        <label style="display: none; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
           {{ form.remember_me }} Remember me
         </label>
         <a href="{% url 'login' %}" style="font-size: 0.8rem; color: var(--text-muted);">Switch Portal</a>

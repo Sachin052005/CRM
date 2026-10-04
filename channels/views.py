@@ -218,9 +218,10 @@ def admin_configuration_manage(request, pk):
     conn = get_object_or_404(LeadConnection, pk=pk)
 
     is_meta = (
-        conn.connection_type == LeadConnection.ConnectionType.META or
+        conn.connection_type in (LeadConnection.ConnectionType.META, LeadConnection.ConnectionType.INSTAGRAM) or
         'meta' in conn.name.lower() or
-        'facebook' in conn.name.lower()
+        'facebook' in conn.name.lower() or
+        'instagram' in conn.name.lower()
     )
     if is_meta and request.method == 'GET' and not (
         request.headers.get('x-requested-with') == 'XMLHttpRequest' or
@@ -896,7 +897,7 @@ def meta_webhook_endpoint(request):
                             'name': val.get('name') or f"Meta Lead {leadgen_id[-4:] if len(leadgen_id) >= 4 else 'New'}",
                             'phone': val.get('phone', '9876543210'),
                             'email': val.get('email', ''),
-                            'source': 'Meta',
+                            'source': val.get('platform') or val.get('source') or 'Meta',
                             'notes': f"Meta Leadgen ID: {leadgen_id} | Form ID: {val.get('form_id', 'N/A')}",
                         }
                         lead = _process_incoming_meta_lead(lead_data, meta_channel, request)
@@ -934,18 +935,24 @@ def _process_incoming_meta_lead(data, meta_channel, request=None):
     name = str(data.get('name', 'Meta Lead')).strip()
     notes = str(data.get('notes', 'Received via Meta Real-Time Webhook')).strip()
 
+    # Resolve the real source (Facebook, Instagram, etc.) instead of always hardcoding "Meta",
+    # so each platform's leads are distinguishable in Lead Setup. Defaults to "Meta" to preserve
+    # existing behavior when the caller doesn't specify a source.
+    source_label = str(data.get('source') or 'Meta').strip() or 'Meta'
+    lead_channel = Channel.objects.filter(name__iexact=source_label).first() or meta_channel
+
     # Check for duplicate lead
     existing_lead = find_duplicate_lead(phone=phone, email=email, name=name)
     if existing_lead:
         handle_incoming_lead_duplicate(
             existing_lead=existing_lead,
             incoming_data=data,
-            source_label='Meta Webhook'
+            source_label=f'{source_label} Webhook'
         )
         log_activity(
             user=None,
-            action="Meta Webhook Lead Updated",
-            description=f"Existing lead '{existing_lead.name}' ({existing_lead.phone}) updated via Meta real-time webhook.",
+            action=f"{source_label} Webhook Lead Updated",
+            description=f"Existing lead '{existing_lead.name}' ({existing_lead.phone}) updated via {source_label} real-time webhook.",
             object_type="Lead",
             object_id=existing_lead.id,
             request=request
@@ -957,20 +964,20 @@ def _process_incoming_meta_lead(data, meta_channel, request=None):
         name=name,
         phone=phone,
         email=email,
-        channel=meta_channel,
+        channel=lead_channel,
         status=LeadStatus.NEW,
-        source='Meta',
+        source=source_label,
         notes=notes
     )
 
     # Automatically assign to manager & telecaller
-    assign_lead_automatically(new_lead, source="Meta Webhook")
+    assign_lead_automatically(new_lead, source=f"{source_label} Webhook")
     new_lead.save()
 
     log_activity(
         user=None,
-        action="Meta Webhook Lead Received",
-        description=f"New real-time lead '{new_lead.name}' ({new_lead.phone}) created via Meta Lead Ads.",
+        action=f"{source_label} Webhook Lead Received",
+        description=f"New real-time lead '{new_lead.name}' ({new_lead.phone}) created via {source_label} Lead Ads.",
         object_type="Lead",
         object_id=new_lead.id,
         request=request

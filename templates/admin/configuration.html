@@ -13,7 +13,7 @@
   <div class="page-actions">
     <button type="button" class="btn btn-primary" onclick="openAddConnectionModal()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 9px 18px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      + Add Connection
+       Add Connection
     </button>
   </div>
 </div>
@@ -41,8 +41,15 @@
         <!-- Card Header: Title & Status -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px;">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower %}background: #e0e7ff; color: #4338ca;{% elif 'website' in conn.name|lower %}background: #ecfdf5; color: #059669;{% elif 'sheet' in conn.name|lower %}background: #ecfdf5; color: #16a34a;{% else %}background: #eff6ff; color: #2563eb;{% endif %}">
-              {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower %}
+            <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; {% if 'instagram' in conn.name|lower %}background: #fce7f3; color: #be185d;{% elif 'meta' in conn.name|lower or 'facebook' in conn.name|lower %}background: #e0e7ff; color: #4338ca;{% elif 'website' in conn.name|lower %}background: #ecfdf5; color: #059669;{% elif 'sheet' in conn.name|lower %}background: #ecfdf5; color: #16a34a;{% else %}background: #eff6ff; color: #2563eb;{% endif %}">
+              {% if 'instagram' in conn.name|lower %}
+              <!-- Instagram Icon -->
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              {% elif 'meta' in conn.name|lower or 'facebook' in conn.name|lower %}
               <!-- Meta / Facebook Icon -->
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -114,7 +121,7 @@
 
               <tr style="border-bottom: 1px solid #edf2f7;">
                 <td style="padding: 6px 0; color: var(--text-muted); width: 110px;">
-                  {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower %}Lead Source:{% else %}Source:{% endif %}
+                  {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower or 'instagram' in conn.name|lower %}Lead Source:{% else %}Source:{% endif %}
                 </td>
                 <td style="padding: 6px 0; font-weight: 600; color: var(--text-main);" id="cardSource-{{ conn.id }}">
                   {{ conn.source_name }}
@@ -147,7 +154,7 @@
       <!-- Action Buttons -->
       <div style="display: flex; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color); flex-wrap: wrap;">
         <!-- Manage Button -->
-        {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower or conn.connection_type == 'Meta' %}
+        {% if 'meta' in conn.name|lower or 'facebook' in conn.name|lower or 'instagram' in conn.name|lower or conn.connection_type == 'Meta' or conn.connection_type == 'Instagram' %}
         <a href="{% url 'admin_meta_manage' conn.id %}" class="btn btn-secondary btn-sm" style="font-weight: 600; padding: 6px 14px; text-decoration: none; display: inline-flex; align-items: center;">
           Manage
         </a>
@@ -201,6 +208,7 @@
           <label class="form-label" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-main);">Connection Type <span style="color: #ef4444;">*</span></label>
           <select name="connection_type" id="addConnType" class="form-select" onchange="handleTypeChange(this.value)" style="width: 100%; padding: 8px 10px; font-size: 0.875rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
             <option value="Meta">Meta / Facebook</option>
+            <option value="Instagram">Instagram</option>
             <option value="Website">Website</option>
             <option value="Google Sheets">Google Sheets</option>
             <option value="WhatsApp">WhatsApp</option>
@@ -445,6 +453,11 @@ function handleTypeChange(val) {
     pageInput.value = 'TechPanda Academy';
     sourceInput.value = 'Meta';
     webhookInput.placeholder = 'https://crm.techpanda.academy/api/webhooks/meta-lead-ads/';
+  } else if (val === 'Instagram') {
+    if (!nameInput.value || nameInput.value.includes('Connection')) nameInput.value = 'Instagram Leads';
+    pageInput.value = 'TechPanda Academy';
+    sourceInput.value = 'Instagram';
+    webhookInput.placeholder = 'https://crm.techpanda.academy/api/webhooks/meta/leads/';
   } else if (val === 'Website') {
     if (!nameInput.value || nameInput.value.includes('Connection')) nameInput.value = 'Website';
     pageInput.value = '';

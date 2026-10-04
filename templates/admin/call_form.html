@@ -7,7 +7,7 @@
     <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">{{ page_title }}</h1>
     <p style="color: var(--text-muted); font-size: 0.875rem;">Directly record a call engagement into the central database audit log</p>
   </div>
-  <a href="{% url 'admin_calls_list' %}" class="btn btn-secondary">&larr; Back to Calls</a>
+  <a href="{% url 'admin_calls_list' %}" class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Back to Calls</a>
 </div>
 
 <div style="max-width: 680px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 28px; box-shadow: var(--shadow-sm);">
@@ -39,7 +39,7 @@
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <div class="form-group">
-          <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px;">Supervising Manager</label>
+          <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px;">Supervising Sales Head</label>
           {{ form.manager }}
           {% if form.manager.errors %}<div style="color: #ef4444; font-size: 0.8rem; margin-top: 4px;">{{ form.manager.errors|striptags }}</div>{% endif %}
         </div>

@@ -4,7 +4,7 @@
     <strong><a href="{% url 'admin_lead_detail' ld.pk %}" style="color: var(--primary); text-decoration: none;">{{ ld.name }}</a></strong>
   </td>
   <td>
-    <div style="font-family: monospace; font-weight: 600; color: #1e293b;">{{ ld.masked_phone|default:ld.phone }}</div>
+    <div style="font-family: monospace; font-weight: 600; color: #1e293b;">{{ ld.phone }}</div>
   </td>
   <td>
     <a href="mailto:{{ ld.email }}" style="color: #475569; text-decoration: none;">{{ ld.email|default:"-" }}</a>

@@ -400,7 +400,7 @@ def manager_lead_create(request):
                     incoming_data=form.cleaned_data,
                     branch=form.cleaned_data.get('branch') or manager.branch,
                     user=manager,
-                    source_label="Manager Entry"
+                    source_label="Sales Head Entry"
                 )
                 messages.info(
                     request,
@@ -416,7 +416,7 @@ def manager_lead_create(request):
             log_activity(
                 user=manager,
                 action="Lead Created",
-                description=f"Manager '{manager.username}' created new lead: '{lead.name}' ({lead.phone}).",
+                description=f"Sales Head '{manager.username}' created new lead: '{lead.name}' ({lead.phone}).",
                 object_type="Lead",
                 object_id=lead.pk,
                 request=request
@@ -427,7 +427,7 @@ def manager_lead_create(request):
                 create_notification(
                     recipient=lead.assigned_telecaller,
                     title="New Lead Assigned",
-                    message=f"Manager '{manager.username}' assigned lead '{lead.name}' to you.",
+                    message=f"Sales Head '{manager.username}' assigned lead '{lead.name}' to you.",
                     notification_type="lead_assigned"
                 )
             return redirect('manager_lead_detail', pk=lead.pk)
@@ -491,8 +491,8 @@ def manager_lead_edit(request, pk):
             lead = form.save()
             log_activity(
                 user=request.user,
-                action="Lead Updated by Manager",
-                description=f"Manager '{request.user.username}' updated lead '{lead.name}'.",
+                action="Lead Updated by Sales Head",
+                description=f"Sales Head '{request.user.username}' updated lead '{lead.name}'.",
                 object_type="Lead",
                 object_id=lead.pk,
                 request=request
@@ -717,6 +717,23 @@ from .google_sheets_service import (
     disconnect_google_oauth
 )
 
+STANDARD_LEAD_CHANNELS = [
+    'Facebook', 'Google Ads', 'Google Sheets', 'Instagram', 'Manual',
+    'Phone', 'Referral', 'Walk-in', 'Website', 'WhatsApp',
+]
+
+
+def ensure_standard_channels_exist():
+    """
+    Guarantees the standard Channel/Source options are selectable on the Offline Leads
+    'Add Spreadsheet' form, without requiring a manual seed command re-run.
+    Idempotent: never duplicates or disturbs existing Channel rows.
+    """
+    for name in STANDARD_LEAD_CHANNELS:
+        Channel.objects.get_or_create(name=name, defaults={'status': 'Active'})
+    return Channel.objects.filter(status='Active').order_by('name')
+
+
 def get_offline_leads_queryset(request, connection_id=None):
     """
     Returns filtered QuerySet for offline leads.
@@ -819,30 +836,16 @@ def admin_offline_leads_list(request):
                 headers = selected_conn.field_mapping.get('headers', [])
                 rows = selected_conn.field_mapping.get('rows', [])
 
-    # Format rows for display (masking phone if 10 digits as required: 98765xxxxx)
+    # Format rows for display - show the actual imported value as-is (no masking).
     formatted_rows = []
     for r in rows:
         row_cells = []
         if isinstance(r, (list, tuple)):
             for idx, cell in enumerate(r):
-                val_str = str(cell).strip()
-                h_name = headers[idx] if idx < len(headers) else ''
-                h_lower = str(h_name).strip().lower()
-                if ('phone' in h_lower or 'mobile' in h_lower or 'contact' in h_lower) and len(val_str) == 10 and val_str.isdigit():
-                    display_val = val_str[:5] + 'xxxxx'
-                else:
-                    display_val = val_str
-                row_cells.append(display_val)
+                row_cells.append(str(cell).strip())
         elif isinstance(r, dict):
             for h in headers:
-                val = r.get(h, '')
-                val_str = str(val).strip()
-                h_lower = str(h).strip().lower()
-                if ('phone' in h_lower or 'mobile' in h_lower or 'contact' in h_lower) and len(val_str) == 10 and val_str.isdigit():
-                    display_val = val_str[:5] + 'xxxxx'
-                else:
-                    display_val = val_str
-                row_cells.append(display_val)
+                row_cells.append(str(r.get(h, '')).strip())
         formatted_rows.append(row_cells)
 
     # Build card list for connected spreadsheets (all active and paused)
@@ -857,6 +860,19 @@ def admin_offline_leads_list(request):
             s_lead_count = s_offline
         sync_t = timezone.localtime(s.last_sync_time).strftime('%I:%M:%S %p') if s.last_sync_time else now_str
 
+        # Connection state is independent of the last sync result: an inactive connection is
+        # either Paused (resumable via the Pause/Resume toggle) or Disconnected (explicit
+        # Disconnect action) - both set is_active=False, so last_sync_status (which the
+        # pause/disconnect views set to exactly 'Paused'/'Disconnected') is what tells them
+        # apart. A Failed *sync* never lands here since a failed attempt never touches
+        # is_active - see sync_google_sheet().
+        if s.is_active:
+            conn_state = 'Connected'
+        elif s.last_sync_status == 'Disconnected':
+            conn_state = 'Disconnected'
+        else:
+            conn_state = 'Paused'
+
         connected_sheets.append({
             'id': s.id,
             'name': s.name,
@@ -867,7 +883,7 @@ def admin_offline_leads_list(request):
             'channel': s.channel.name if s.channel else None,
             'channel_id': s.channel_id,
             'is_active': s.is_active,
-            'status': 'Connected' if s.is_active else 'Paused',
+            'status': conn_state,
             'sync_status': s.last_sync_status or 'Connected',
             'leads_count': s_lead_count,
             'last_sync': sync_t,
@@ -879,7 +895,7 @@ def admin_offline_leads_list(request):
 
     duplicate_count = DuplicateLeadRecord.objects.count()
     branches = Branch.objects.filter(status='Active').order_by('name')
-    channels = Channel.objects.filter(status='Active').order_by('name')
+    channels = ensure_standard_channels_exist()
 
     return render(request, 'admin/offline_leads.html', {
         'is_connected': is_connected,
@@ -980,24 +996,10 @@ def admin_offline_leads_data_api(request):
         row_cells = []
         if isinstance(r, (list, tuple)):
             for idx, cell in enumerate(r):
-                val_str = str(cell).strip()
-                h_name = headers[idx] if idx < len(headers) else ''
-                h_lower = str(h_name).strip().lower()
-                if ('phone' in h_lower or 'mobile' in h_lower or 'contact' in h_lower) and len(val_str) == 10 and val_str.isdigit():
-                    display_val = val_str[:5] + 'xxxxx'
-                else:
-                    display_val = val_str
-                row_cells.append(display_val)
+                row_cells.append(str(cell).strip())
         elif isinstance(r, dict):
             for h in headers:
-                val = r.get(h, '')
-                val_str = str(val).strip()
-                h_lower = str(h).strip().lower()
-                if ('phone' in h_lower or 'mobile' in h_lower or 'contact' in h_lower) and len(val_str) == 10 and val_str.isdigit():
-                    display_val = val_str[:5] + 'xxxxx'
-                else:
-                    display_val = val_str
-                row_cells.append(display_val)
+                row_cells.append(str(r.get(h, '')).strip())
         formatted_rows.append(row_cells)
 
     html_parts = []
@@ -1096,6 +1098,8 @@ def admin_google_sheet_connect(request):
         request.POST.get('link', '').strip()
     )
     connection_name = request.POST.get('name', '').strip() or request.POST.get('spreadsheet_name', '').strip()
+    channel_id = request.POST.get('channel_id', '').strip()
+    branch_id = request.POST.get('branch_id', '').strip()
 
     if not url:
         return JsonResponse({'success': False, 'error': 'Google Spreadsheet URL is required.'})
@@ -1103,14 +1107,16 @@ def admin_google_sheet_connect(request):
     # If validate_spreadsheet_access is mocked in tests, invoke it
     val_is_mocked = hasattr(validate_spreadsheet_access, 'mock_calls') or hasattr(validate_spreadsheet_access, 'assert_called')
     val_headers = []
-    worksheet_name = 'Sheet1'
+    # Honor the submitted Worksheet / Tab Name so multiple tabs of the SAME spreadsheet
+    # can be connected as independent connections (see spreadsheet_id+worksheet_name lookup below).
+    worksheet_name = request.POST.get('worksheet_name', '').strip() or 'Sheet1'
     sheet_title = ''
     if val_is_mocked:
         is_valid, s_id, ws_name, val_headers, sheet_title, err = validate_spreadsheet_access(url)
         if not is_valid:
             return JsonResponse({'success': False, 'error': err or 'Invalid Google Spreadsheet URL or permission denied.'})
         spreadsheet_id = s_id
-        worksheet_name = ws_name or 'Sheet1'
+        worksheet_name = ws_name or worksheet_name
     else:
         spreadsheet_id = extract_spreadsheet_id(url)
         if not spreadsheet_id:
@@ -1139,7 +1145,10 @@ def admin_google_sheet_connect(request):
         meta_title = ''
 
     final_name = connection_name or sheet_title or meta_title or 'Student Enquiries'
-    conn = GoogleSheetConnection.objects.filter(spreadsheet_id=spreadsheet_id).first()
+    # Identity = spreadsheet_id + worksheet_name, so a second tab of the SAME spreadsheet
+    # (different Channel/Source, different worksheet) becomes its own independent connection
+    # instead of overwriting the first tab's connection.
+    conn = GoogleSheetConnection.objects.filter(spreadsheet_id=spreadsheet_id, worksheet_name=worksheet_name).first()
 
     detected_mapping = detect_column_mapping(headers) if headers else {}
     stored_mapping = dict(detected_mapping)
@@ -1161,7 +1170,9 @@ def admin_google_sheet_connect(request):
             last_sync_status='Connected',
             last_sync_time=timezone.now(),
             field_mapping=stored_mapping,
-            created_by=request.user
+            created_by=request.user,
+            channel_id=int(channel_id) if channel_id.isdigit() else None,
+            branch_id=int(branch_id) if branch_id.isdigit() else None,
         )
     else:
         conn.spreadsheet_url = url
@@ -1172,6 +1183,13 @@ def admin_google_sheet_connect(request):
         conn.last_sync_status = 'Connected'
         conn.last_sync_time = timezone.now()
         conn.field_mapping = stored_mapping
+        # Channel / Source attribution: the selected Channel/Source determines lead.channel
+        # (see leads/google_sheets.py::sync_google_sheet). Only touch it when the caller
+        # actually supplied a value, so a bare re-sync/retry call can't silently clear it.
+        if channel_id.isdigit():
+            conn.channel_id = int(channel_id)
+        if branch_id.isdigit():
+            conn.branch_id = int(branch_id)
         conn.save()
 
     # Process rows through duplicate rules & 10-day logic
@@ -1187,30 +1205,16 @@ def admin_google_sheet_connect(request):
     except Exception as e:
         logger.info(f"Lead model sync note: {e}")
 
-    # Format rows for display (masking phone if 10 digits as shown in prompt example: 98765xxxxx)
+    # Format rows for display - show the actual imported value as-is (no masking).
     formatted_rows = []
     for r in rows:
         row_cells = []
         if isinstance(r, (list, tuple)):
             for idx, cell in enumerate(r):
-                val_str = str(cell).strip()
-                h_name = headers[idx] if idx < len(headers) else ''
-                h_lower = str(h_name).strip().lower()
-                if ('phone' in h_lower or 'mobile' in h_lower or 'contact' in h_lower) and len(val_str) == 10 and val_str.isdigit():
-                    display_val = val_str[:5] + 'xxxxx'
-                else:
-                    display_val = val_str
-                row_cells.append(display_val)
+                row_cells.append(str(cell).strip())
         elif isinstance(r, dict):
             for h in headers:
-                val = r.get(h, '')
-                val_str = str(val).strip()
-                h_lower = str(h).strip().lower()
-                if ('phone' in h_lower or 'mobile' in h_lower or 'contact' in h_lower) and len(val_str) == 10 and val_str.isdigit():
-                    display_val = val_str[:5] + 'xxxxx'
-                else:
-                    display_val = val_str
-                row_cells.append(display_val)
+                row_cells.append(str(r.get(h, '')).strip())
         formatted_rows.append(row_cells)
 
     now = timezone.localtime(timezone.now())
@@ -1280,24 +1284,22 @@ def admin_google_sheet_connect(request):
 @admin_required
 def admin_google_sheet_disconnect(request, connection_id=None):
     """
-    Disconnects a specific connected Google Spreadsheet (or all if unspecified):
-    - Stops live fetching for that spreadsheet
-    - Preserves other connected spreadsheets active
+    Disconnects ONE specific connected Google Spreadsheet by its connection_id.
+    Stops live fetching for that spreadsheet only - every other connection
+    (Google Sheet or Google Form) must remain untouched.
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST method required.'}, status=405)
 
     target_id = connection_id or request.POST.get('connection_id')
 
-    if target_id and str(target_id).isdigit():
-        target_conn = GoogleSheetConnection.objects.filter(pk=int(target_id)).first()
-        if target_conn:
-            target_conn.is_active = False
-            target_conn.last_sync_status = 'Disconnected'
-            target_conn.save(update_fields=['is_active', 'last_sync_status', 'updated_at'])
-    else:
-        GoogleSheetConnection.objects.all().update(is_active=False, last_sync_status='Disconnected')
-        GoogleFormConnection.objects.all().update(is_active=False, last_sync_status='Disconnected')
+    if not (target_id and str(target_id).isdigit()):
+        return JsonResponse({'success': False, 'error': 'A specific connection_id is required to disconnect.'}, status=400)
+
+    target_conn = get_object_or_404(GoogleSheetConnection, pk=int(target_id))
+    target_conn.is_active = False
+    target_conn.last_sync_status = 'Disconnected'
+    target_conn.save(update_fields=['is_active', 'last_sync_status', 'updated_at'])
 
     active_sheets = GoogleSheetConnection.objects.filter(is_active=True)
     is_connected = active_sheets.exists()
@@ -2251,18 +2253,18 @@ def admin_google_form_connect(request):
 @admin_required
 def admin_google_form_disconnect(request):
     """
-    Disconnects the active Google Form connection and clears offline leads display.
+    Disconnects the active Google Form connection ONLY.
+    Must never touch Google Sheet connections or delete any Lead records -
+    a Google Form disconnect has no business affecting unrelated sources.
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST method required.'}, status=405)
 
-    GoogleFormConnection.objects.all().update(is_active=False, last_sync_status='Disconnected')
-    GoogleSheetConnection.objects.all().update(is_active=False, last_sync_status='Disconnected')
-    Lead.objects.filter(is_offline=True).delete()
+    GoogleFormConnection.objects.filter(is_active=True).update(is_active=False, last_sync_status='Disconnected')
 
     return JsonResponse({
         'success': True,
-        'message': 'Google Form connection disconnected. Offline leads display cleared.'
+        'message': 'Google Form connection disconnected.'
     })
 
 

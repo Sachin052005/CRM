@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -76,13 +77,13 @@ def admin_manager_create(request):
             manager = form.save(created_by=request.user)
             log_activity(
                 user=request.user,
-                action="Manager Created",
-                description=f"Admin created Manager account '{manager.username}' ({manager.email}).",
+                action="Sales Head Created",
+                description=f"Admin created Sales Head account '{manager.username}' ({manager.email}).",
                 object_type="User",
                 object_id=manager.pk,
                 request=request
             )
-            messages.success(request, f"Manager '{manager.username}' was successfully created.")
+            messages.success(request, f"Sales Head '{manager.username}' was successfully created.")
             return redirect('admin_managers_list')
     else:
         form = AdminManagerCreateForm()
@@ -94,11 +95,24 @@ def admin_manager_detail(request, pk):
     manager = get_object_or_404(User.objects.select_related('branch'), pk=pk, role=UserRole.SALES_HEAD)
     branch_ids = get_accessible_branch_ids(manager)
 
-    telecallers = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=branch_ids).annotate(
-        lead_count=Count('telecaller_leads', distinct=True),
-        call_count=Count('telecaller_calls', distinct=True),
-        followup_count=Count('telecaller_followups', distinct=True)
-    )
+    # Branch Access -> Branch Head drill-down (Admin -> Sales Head -> Branch Access -> Branch Head)
+    branch_heads_by_branch = {
+        bh.branch_id: bh
+        for bh in User.objects.filter(role=UserRole.BRANCH_HEAD, branch_id__in=branch_ids)
+    }
+    branch_access_rows = [
+        {
+            'branch': access.branch,
+            'branch_head': branch_heads_by_branch.get(access.branch_id),
+        }
+        for access in manager.branch_access.select_related('branch').order_by('branch__name')
+    ]
+
+    # Hierarchy is progressive (Sales Head -> Branch Head -> Counselor -> Telecaller): this
+    # page shows only the next level down (Branch Access / Branch Head) via branch_access_rows
+    # above. Telecaller-level detail is reached by drilling through the Branch Head page, not
+    # dumped here. Only an aggregate count is needed for the KPI card.
+    telecallers_count = User.objects.filter(role=UserRole.TELECALLER, branch_id__in=branch_ids).count()
 
     total_leads = Lead.objects.filter(Q(assigned_sales_head=manager) | Q(assigned_telecaller__branch_id__in=branch_ids)).count()
     total_calls = CallHistory.objects.filter(Q(manager=manager) | Q(telecaller__branch_id__in=branch_ids)).count()
@@ -118,7 +132,8 @@ def admin_manager_detail(request, pk):
 
     return render(request, 'admin/manager_detail.html', {
         'manager': manager,
-        'telecallers': telecallers,
+        'branch_access_rows': branch_access_rows,
+        'telecallers_count': telecallers_count,
         'total_leads': total_leads,
         'total_calls': total_calls,
         'pending_followups': pending_followups,
@@ -136,13 +151,13 @@ def admin_manager_edit(request, pk):
             form.save(created_by=request.user)
             log_activity(
                 user=request.user,
-                action="Manager Updated",
-                description=f"Admin updated Manager profile for '{manager.username}'.",
+                action="Sales Head Updated",
+                description=f"Admin updated Sales Head profile for '{manager.username}'.",
                 object_type="User",
                 object_id=manager.pk,
                 request=request
             )
-            messages.success(request, f"Manager '{manager.username}' profile updated.")
+            messages.success(request, f"Sales Head '{manager.username}' profile updated.")
             return redirect('admin_manager_detail', pk=manager.pk)
     else:
         form = AdminManagerEditForm(instance=manager)
@@ -160,13 +175,13 @@ def admin_manager_toggle_status(request, pk):
     status_str = "activated" if manager.is_active else "deactivated"
     log_activity(
         user=request.user,
-        action="Manager Status Changed",
-        description=f"Admin {status_str} Manager '{manager.username}'.",
+        action="Sales Head Status Changed",
+        description=f"Admin {status_str} Sales Head '{manager.username}'.",
         object_type="User",
         object_id=manager.pk,
         request=request
     )
-    messages.success(request, f"Manager '{manager.username}' has been {status_str}.")
+    messages.success(request, f"Sales Head '{manager.username}' has been {status_str}.")
     return redirect('admin_managers_list')
 
 @admin_required
@@ -179,12 +194,12 @@ def admin_manager_change_password(request, pk):
             log_activity(
                 user=request.user,
                 action="Password Reset by Admin",
-                description=f"Admin reset password for Manager '{manager.username}'.",
+                description=f"Admin reset password for Sales Head '{manager.username}'.",
                 object_type="User",
                 object_id=manager.pk,
                 request=request
             )
-            messages.success(request, f"Password for Manager '{manager.username}' has been successfully changed.")
+            messages.success(request, f"Password for Sales Head '{manager.username}' has been successfully changed.")
             from activities.services import create_notification
             create_notification(
                 recipient=manager,
@@ -199,6 +214,65 @@ def admin_manager_change_password(request, pk):
     return render(request, 'admin/manager_change_password.html', {
         'form': form,
         'manager': manager
+    })
+
+
+@admin_required
+def admin_manager_delete(request, pk):
+    """
+    Admin-only Sales Head deletion. The @admin_required decorator already rejects
+    any non-admin role before this body runs (Sales Head/Branch Head/Counselor/Telecaller
+    posting directly to this URL get redirected with a permission-denied message), so
+    there is no separate manual role check needed here - mirrors admin_telecaller_delete.
+    Dependent records are unassigned/detached, never deleted, preserving real CRM data.
+    """
+    manager = User.objects.filter(pk=pk, role=UserRole.SALES_HEAD).first()
+    if not manager:
+        messages.error(request, "Sales Head not found.")
+        return redirect('admin_managers_list')
+
+    if manager.pk == request.user.pk:
+        messages.error(request, "You cannot delete your own account.")
+        return redirect('admin_managers_list')
+
+    if request.method == 'POST':
+        with transaction.atomic():
+            username = manager.username
+            full_name = manager.get_full_name() or username
+
+            # 1. Preserve existing leads: unassign the Sales Head, keep branch/channel/history intact
+            affected_leads_count = Lead.objects.filter(assigned_sales_head=manager).update(
+                assigned_sales_head=None
+            )
+
+            # 2. Preserve calls & follow-ups: detach the Sales Head reference
+            CallHistory.objects.filter(manager=manager).update(manager=None)
+            FollowUp.objects.filter(manager=manager).update(manager=None)
+
+            # 3. Preserve activities: detach user reference
+            Activity.objects.filter(user=manager).update(user=None)
+
+            # 4. Branch access grants (SalesHeadBranchAccess) cascade-delete with the user;
+            #    the Branches and Branch Heads themselves are untouched.
+
+            log_activity(
+                user=request.user,
+                action="Sales Head Deleted",
+                description=f"Admin deleted Sales Head '{username}' ({full_name}). {affected_leads_count} lead(s) unassigned from this Sales Head.",
+                object_type="User",
+                object_id=str(pk),
+                request=request
+            )
+
+            manager.delete()
+
+        messages.success(request, "Sales Head deleted successfully.")
+        return redirect('admin_managers_list')
+
+    assigned_leads_count = Lead.objects.filter(assigned_sales_head=manager).count()
+    return render(request, 'admin/manager_confirm_delete.html', {
+        'manager': manager,
+        'assigned_leads_count': assigned_leads_count,
     })
 
 

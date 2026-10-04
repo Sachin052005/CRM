@@ -9,6 +9,7 @@ urlpatterns = [
     path('admin/managers/<int:pk>/edit/', views.admin_manager_edit, name='admin_manager_edit'),
     path('admin/managers/<int:pk>/toggle/', views.admin_manager_toggle_status, name='admin_manager_toggle_status'),
     path('admin/managers/<int:pk>/password/', views.admin_manager_change_password, name='admin_manager_change_password'),
+    path('admin/managers/<int:pk>/delete/', views.admin_manager_delete, name='admin_manager_delete'),
 
     # Manager portal
     path('manager/dashboard/', views.manager_dashboard, name='manager_dashboard'),

@@ -19,7 +19,7 @@
   </div>
   <div class="page-actions" style="display: flex; gap: 10px; align-items: center;">
     <a href="{% url 'admin_offline_leads' %}" class="btn btn-secondary" style="font-weight: 600;">
-      &larr; Back to Offline Leads
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Back to Offline Leads
     </a>
     <a href="{% url 'admin_leads_list' %}" class="btn btn-outline-secondary" style="font-weight: 600;">
       All Leads
@@ -40,7 +40,7 @@
           <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--text-main);">
             {{ rec.name }}
           </h3>
-          <span class="badge" style="background: #fee2e2; color: #b91c1c; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; border: 1px solid #fca5a5;">
+          <span class="badge badge-duplicate" style="font-size: 0.8rem; padding: 4px 10px;">
             {{ rec.status|default:'DUPLICATE' }}
           </span>
         </div>
@@ -135,7 +135,7 @@
         <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-main);">
           {{ group.group_label }}
         </h3>
-        <span class="badge" style="background: #fee2e2; color: #b91c1c; font-size: 0.775rem; font-weight: 600; padding: 3px 8px; border-radius: 9999px;">
+        <span class="badge badge-duplicate">
           DUPLICATE
         </span>
       </div>

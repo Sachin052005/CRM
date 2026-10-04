@@ -115,10 +115,18 @@ def admin_telecaller_detail(request, pk):
     followups = FollowUp.objects.filter(telecaller=telecaller).select_related('lead')[:10]
     activities = Activity.objects.filter(user=telecaller)[:10]
 
-    total_leads = Lead.objects.filter(assigned_telecaller=telecaller).count()
+    all_leads = Lead.objects.filter(assigned_telecaller=telecaller)
+    total_leads = all_leads.count()
     total_calls = CallHistory.objects.filter(caller=telecaller).count()
     completed_calls = CallHistory.objects.filter(caller=telecaller, call_status='Completed').count()
     pending_followups = FollowUp.objects.filter(telecaller=telecaller, status=FollowUpStatus.PENDING).count()
+
+    # Real-data lead breakdown (Section 21: Assigned / Attended / Pending / New / Follow-ups / Completed)
+    from leads.models import LeadStatus
+    new_leads_count = all_leads.filter(status=LeadStatus.NEW).count()
+    attended_leads_count = all_leads.exclude(status=LeadStatus.NEW).count()
+    completed_leads_count = all_leads.filter(status__in=[LeadStatus.CONVERTED, LeadStatus.JOINED]).count()
+    pending_leads_count = total_leads - completed_leads_count - all_leads.filter(status=LeadStatus.LOST).count() - all_leads.filter(status=LeadStatus.NOT_INTERESTED).count() - all_leads.filter(status=LeadStatus.NOT_JOINED).count()
 
     return render(request, 'admin/telecaller_detail.html', {
         'telecaller': telecaller,
@@ -130,6 +138,10 @@ def admin_telecaller_detail(request, pk):
         'total_calls': total_calls,
         'completed_calls': completed_calls,
         'pending_followups': pending_followups,
+        'new_leads_count': new_leads_count,
+        'attended_leads_count': attended_leads_count,
+        'pending_leads_count': pending_leads_count,
+        'completed_leads_count': completed_leads_count,
     })
 
 @admin_required

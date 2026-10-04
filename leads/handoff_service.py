@@ -83,6 +83,44 @@ def reassign_lead(lead, *, to_user, to_role, reason='', assigned_by, _skip_permi
     return lead
 
 
+def unassign_lead(lead, *, unassigned_by, reason='Unassigned'):
+    """Removes the current Telecaller assignment from a lead without deleting it.
+    The lead, its branch, channel/source and duplicate history are all preserved - only the
+    assignment is cleared and the lead returns to a Pending Assignment state so it can be
+    picked up again. Mirrors reassign_lead's permission check and audit trail so unassignment
+    and reassignment stay consistent (one shared service, not duplicated per-view logic)."""
+    from accounts.permissions import can_assign_lead
+
+    if not can_assign_lead(unassigned_by, lead):
+        raise PermissionDenied("You do not have permission to unassign this lead.")
+
+    from_user = lead.assigned_telecaller
+    from_role = lead.current_owner_type if from_user else ''
+
+    with transaction.atomic():
+        lead.assigned_telecaller = None
+        lead.assignment_status = 'Pending Assignment'
+        lead.pending_assignment_reason = reason
+        lead.current_owner_type = LeadOwnerType.UNASSIGNED
+        lead.save(update_fields=[
+            'assigned_telecaller', 'assignment_status', 'pending_assignment_reason',
+            'current_owner_type', 'updated_at',
+        ])
+
+        LeadAssignmentHistory.objects.create(
+            lead=lead,
+            from_user=from_user,
+            to_user=None,
+            from_role=from_role,
+            to_role='',
+            branch=lead.branch,
+            reason=reason,
+            assigned_by=unassigned_by if getattr(unassigned_by, 'is_authenticated', False) else None,
+        )
+
+    return lead
+
+
 def handoff_to_counselor(lead, counselor, assigned_by, reason='Telecaller handoff'):
     """Explicit telecaller -> counselor handoff. Keeps assigned_telecaller intact for traceability."""
     return reassign_lead(lead, to_user=counselor, to_role='COUNSELOR', reason=reason, assigned_by=assigned_by)

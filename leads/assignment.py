@@ -212,7 +212,7 @@ def assign_new_lead(lead, branch=None, source="Google Sheet", triggered_by=None)
         log_activity(
             user=triggered_by or selected_manager,
             action="Lead Auto-Assigned",
-            description=f"Lead '{lead.name}' auto-assigned to Branch '{target_branch.name}' Telecaller '{tc_name}' (Manager: {mgr_name}) via {source}.",
+            description=f"Lead '{lead.name}' auto-assigned to Branch '{target_branch.name}' Telecaller '{tc_name}' (Sales Head: {mgr_name}) via {source}.",
             object_type="Lead",
             object_id=lead.pk
         )

@@ -9,14 +9,14 @@
       Adjust follow-up callback date for <strong>{{ followup.lead.name }}</strong> ({{ followup.lead.phone }})
     </p>
   </div>
-  <a href="{% url 'admin_followups_list' %}" class="btn btn-secondary">&larr; Back to Follow-ups</a>
+  <a href="{% url 'admin_followups_list' %}" class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Back to Follow-ups</a>
 </div>
 
 <div style="max-width: 580px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 28px; box-shadow: var(--shadow-sm);">
   <div style="background: var(--bg-body); padding: 14px 18px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 0.875rem;">
     <div><strong>Current Due Date:</strong> {{ followup.follow_up_date }} {% if followup.follow_up_time %}({{ followup.follow_up_time }}){% endif %}</div>
     <div><strong>Current Status:</strong> {{ followup.status }}</div>
-    <div><strong>Manager:</strong> {% if followup.manager %}{{ followup.manager.get_full_name|default:followup.manager.username }}{% else %}Unassigned{% endif %}</div>
+    <div><strong>Sales Head:</strong> {% if followup.manager %}{{ followup.manager.get_full_name|default:followup.manager.username }}{% else %}Unassigned{% endif %}</div>
     <div><strong>Telecaller:</strong> {% if followup.telecaller %}{{ followup.telecaller.get_full_name|default:followup.telecaller.username }}{% else %}Unassigned{% endif %}</div>
   </div>
 

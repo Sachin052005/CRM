@@ -28,7 +28,7 @@
         style="padding: 10px 22px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        + Add Spreadsheet
+         Add Spreadsheet
       </button>
     </div>
   </div>
@@ -78,14 +78,12 @@
           <!-- Status Badge & Disconnect -->
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px;">
             <div>
-              {% if sheet.is_active %}
-              <span class="badge" style="display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; color: #047857; font-weight: 700; font-size: 0.825rem; padding: 4px 12px; border-radius: 9999px; border: 1px solid #a7f3d0;">
-                🟢 Live Connected
-              </span>
+              {% if sheet.status == 'Connected' %}
+              <span class="badge badge-success">Live Connected</span>
+              {% elif sheet.status == 'Paused' %}
+              <span class="badge badge-paused">Paused</span>
               {% else %}
-              <span class="badge" style="display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; color: #b91c1c; font-weight: 700; font-size: 0.825rem; padding: 4px 12px; border-radius: 9999px; border: 1px solid #fecaca;">
-                ⏸️ Paused
-              </span>
+              <span class="badge badge-disconnected">Disconnected</span>
               {% endif %}
               <span style="display: none;">🟢 Connected</span>
             </div>
@@ -125,7 +123,7 @@
             </div>
             <div style="display: flex; justify-content: space-between;">
               <span style="color: var(--text-muted);">Sync Status:</span>
-              <strong style="color: {% if sheet.sync_status == 'Failed' %}#b91c1c{% else %}#047857{% endif %};">{{ sheet.sync_status }}</strong>
+              <span class="badge {% if sheet.sync_status == 'Failed' %}badge-failed{% else %}badge-success{% endif %}">{{ sheet.sync_status }}</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
               <span style="color: var(--text-muted);">Auto Refresh:</span>
@@ -307,14 +305,15 @@
       <!-- Spreadsheet Name -->
       <div style="margin-bottom: 16px;">
         <label for="spreadsheetNameInput" style="display: block; font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">
-          Spreadsheet Name
+          Spreadsheet Name / Source <span style="color: #ef4444;">*</span>
         </label>
         <input 
           type="text" 
-          id="spreadsheetNameInput" 
-          name="name" 
-          class="form-control" 
-          placeholder="Enter Spreadsheet Name (e.g., Student Enquiries - T. Nagar)" 
+          id="spreadsheetNameInput"
+          name="name"
+          class="form-control"
+          placeholder="Enter Spreadsheet Name (e.g., Student Enquiries - T. Nagar)"
+          required
           style="width: 100%; padding: 10px 14px; font-size: 0.95rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm);"
         >
       </div>

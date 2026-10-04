@@ -24,7 +24,7 @@
     </a>
     <a href="{% url 'admin_lead_create' %}" class="btn btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      + Add Lead
+       Add Lead
     </a>
   </div>
 </div>
@@ -124,10 +124,10 @@
           <th>Lead</th>
           <th>Phone</th>
           <th>Branch</th>
-          <th>Source / Spreadsheet</th>
+          <th>Source</th>
           <th>Status</th>
           <th>Assignment</th>
-          <th>Manager</th>
+          <th>Sales Head</th>
           <th>Telecaller</th>
           <th>Product</th>
           <th>Duplicate</th>
@@ -158,32 +158,27 @@
             {% endif %}
           </td>
           <td>
-            <div>{{ ld.channel.name|default:"-" }}</div>
-            {% for sm in ld.sheet_mappings.all %}
-            <span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.725rem; font-weight: 600; margin-top: 3px; display: inline-block;">
-              📊 {{ sm.connection.name }}
-            </span>
-            {% empty %}
-            {% if ld.source and ld.source != 'Manual Entry' and ld.source != 'Telecaller Entry' %}
-            <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.725rem; margin-top: 3px; display: inline-block;">
-              {{ ld.source }}
-            </span>
+            {% if ld.channel %}
+            <span>{{ ld.channel.name }}</span>
+            {% elif ld.source and ld.source != 'Manual Entry' and ld.source != 'Telecaller Entry' and ld.source != 'Manual' %}
+            <span>{{ ld.source }}</span>
+            {% else %}
+            <span style="color: var(--text-muted);">-</span>
             {% endif %}
-            {% endfor %}
           </td>
           <td>
             <span class="badge badge-{{ ld.status|lower|slugify }}">{{ ld.status }}</span>
           </td>
           <td>
             {% if ld.assignment_status == 'Assigned' %}
-            <span class="badge" style="background: #ecfdf5; color: #047857; font-weight: 600; font-size: 0.775rem;">🟢 Assigned</span>
+            <span style="color: var(--success); font-weight: 600;">Assigned</span>
             {% elif ld.assignment_status == 'Pending Assignment' %}
-            <span class="badge" style="background: #fef3c7; color: #92400e; font-weight: 600; font-size: 0.775rem;" title="{{ ld.pending_assignment_reason|default:'Awaiting allocation' }}">🟡 Pending</span>
+            <span style="color: var(--warning); font-weight: 600;" title="{{ ld.pending_assignment_reason|default:'Awaiting allocation' }}">Pending</span>
             {% if ld.pending_assignment_reason %}
-            <div style="font-size: 0.7rem; color: #b45309; max-width: 140px; word-break: break-word;" title="{{ ld.pending_assignment_reason }}">{{ ld.pending_assignment_reason|truncatechars:32 }}</div>
+            <div style="font-size: 0.7rem; color: var(--warning); max-width: 140px; word-break: break-word;" title="{{ ld.pending_assignment_reason }}">{{ ld.pending_assignment_reason|truncatechars:32 }}</div>
             {% endif %}
             {% else %}
-            <span class="badge" style="background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.775rem;">⚪ Unassigned</span>
+            <span style="color: var(--text-muted); font-weight: 600;">Unassigned</span>
             {% endif %}
           </td>
           <td>
@@ -277,8 +272,8 @@
           <div style="font-weight: 700; font-size: 0.8rem; color: #1e40af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
             ORIGINAL LEAD
           </div>
-          <div style="margin-bottom: 4px;"><strong>Branch:</strong> <span id="dupOrigBranch"></span></div>
-          <div style="margin-bottom: 4px;"><strong>Submitted:</strong> <span id="dupOrigSubmitted"></span></div>
+          <div style="margin-bottom: 4px;"><strong>Previous Branch:</strong> <span id="dupOrigBranch"></span></div>
+          <div style="margin-bottom: 4px;"><strong>Previous Submission:</strong> <span id="dupOrigSubmitted"></span></div>
           <div><strong>Status:</strong> <span id="dupOrigStatus" class="badge badge-info"></span></div>
         </div>
 
@@ -287,9 +282,6 @@
             DUPLICATE RECORD
           </div>
           <div id="dupRecordsContainer"></div>
-          <div style="margin-top: 10px; font-weight: 600; color: #b45309; font-size: 0.85rem; padding-top: 8px; border-top: 1px dashed #fde68a;">
-            Same lead details detected within 10 days.
-          </div>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; pt: 8px;">
@@ -341,9 +333,12 @@ function openDuplicateModal(leadId) {
       data.duplicate_records.forEach((rec, idx) => {
         const itemDiv = document.createElement('div');
         itemDiv.style.marginBottom = idx < data.duplicate_records.length - 1 ? '10px' : '0';
+        itemDiv.style.paddingBottom = idx < data.duplicate_records.length - 1 ? '10px' : '0';
+        itemDiv.style.borderBottom = idx < data.duplicate_records.length - 1 ? '1px dashed #fde68a' : 'none';
         itemDiv.innerHTML = `
-          <div><strong>Branch:</strong> ${rec.branch || 'N/A'}</div>
-          <div><strong>Submitted:</strong> ${rec.submitted || 'N/A'}</div>
+          <div><strong>Current Branch:</strong> ${rec.branch || 'N/A'}</div>
+          <div><strong>Current Attempt:</strong> ${rec.submitted || 'N/A'}</div>
+          <div style="margin-top: 4px; font-weight: 600; color: #b45309;">Rule: ${rec.notes || 'Same lead details detected within 10 days.'}</div>
         `;
         dupContainer.appendChild(itemDiv);
       });

@@ -5,7 +5,7 @@
 <div class="page-header">
   <div class="page-title-group">
     <h1>Create Lead</h1>
-    <p>Register a new inquiry and assign it to a Manager and Telecaller</p>
+    <p>Register a new inquiry and assign it to a Sales Head and Telecaller</p>
   </div>
   <div class="page-actions">
     <a href="{% url 'admin_leads_list' %}" class="btn btn-secondary">Back to Leads</a>
@@ -48,7 +48,7 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <div class="form-group">
-            <label class="form-label">Assigned Manager</label>
+            <label class="form-label">Assigned Sales Head</label>
             {{ form.assigned_manager }}
             {% if form.assigned_manager.errors %}<div class="form-error">{{ form.assigned_manager.errors.0 }}</div>{% endif %}
           </div>

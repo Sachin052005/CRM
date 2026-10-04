@@ -7,6 +7,12 @@
     <h1>Counselors</h1>
     <p>All counselors across every branch</p>
   </div>
+  <div class="page-actions">
+    <a href="{% url 'admin_counselor_create' %}" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Add Counselor
+    </a>
+  </div>
 </div>
 
 <div class="filter-card">
@@ -52,13 +58,14 @@
           <th>Leads</th>
           <th>Status</th>
           <th>Created Date</th>
+          <th style="text-align: right;">Action</th>
         </tr>
       </thead>
       <tbody>
         {% for c in page_obj %}
         <tr>
           <td>
-            <strong>{{ c.get_full_name|default:c.username }}</strong>
+            <strong><a href="{% url 'admin_counselor_detail' c.pk %}">{{ c.get_full_name|default:c.username }}</a></strong>
             <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ c.username }}</div>
           </td>
           <td>{{ c.email }}</td>
@@ -70,10 +77,13 @@
             {% if c.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
           </td>
           <td>{{ c.date_joined|date:"M d, Y" }}</td>
+          <td style="text-align: right;">
+            <a href="{% url 'admin_counselor_detail' c.pk %}" class="btn btn-secondary btn-sm">View</a>
+          </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8">
+          <td colspan="9">
             <div class="empty-state">
               <div class="empty-state-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>

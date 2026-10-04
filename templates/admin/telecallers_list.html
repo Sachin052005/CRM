@@ -22,9 +22,9 @@
       <input type="text" name="search" class="form-control" placeholder="Search telecaller name, phone, email..." value="{{ search_query }}">
     </div>
     <div class="filter-col">
-      <label>Manager</label>
+      <label>Counselor</label>
       <select name="manager" class="form-select">
-        <option value="">All Managers</option>
+        <option value="">All Counselors</option>
         {% for m in managers %}
         <option value="{{ m.id }}" {% if manager_filter == m.id|stringformat:"i" %}selected{% endif %}>{{ m.get_full_name|default:m.username }}</option>
         {% endfor %}

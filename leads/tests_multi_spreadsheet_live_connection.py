@@ -66,13 +66,13 @@ class MultiSpreadsheetLiveConnectionTests(TestCase):
         self.assertIn("No spreadsheet connected.", content)
 
     @patch('leads.views.fetch_sheet_data')
-    def test_section_2_and_3_direct_connection_and_dynamic_columns_and_phone_masking(self, mock_fetch):
+    def test_section_2_and_3_direct_connection_and_dynamic_columns_and_phone_unmasked(self, mock_fetch):
         """
         Section 2 & 3:
         - Direct connection without authentication
         - Displays status card: '🟢 Live Connected', 'Spreadsheet:', 'Last Refresh:', 'Auto Refresh: Every 10 seconds'
         - Dynamic table with actual columns
-        - 10-digit phone masked as 98765xxxxx
+        - Phone number is displayed as actually imported, not masked (master prompt Section 28/52)
         """
         headers = ['Student Name', 'Mobile Number', 'Email Address', 'Specialization']
         rows = [
@@ -109,11 +109,9 @@ class MultiSpreadsheetLiveConnectionTests(TestCase):
         for h in headers:
             self.assertIn(f"<th>{h}</th>", content)
 
-        # Masked phones: 98765xxxxx and 91234xxxxx
-        self.assertIn("98765xxxxx", content)
-        self.assertIn("91234xxxxx", content)
-        self.assertNotIn("9876543210", content)
-        self.assertNotIn("9123456780", content)
+        # Actual phone numbers displayed, not masked
+        self.assertIn("9876543210", content)
+        self.assertIn("9123456780", content)
 
     @patch('leads.views.fetch_sheet_data')
     def test_section_6_multiple_spreadsheet_connections(self, mock_fetch):
@@ -192,7 +190,7 @@ class MultiSpreadsheetLiveConnectionTests(TestCase):
         api_res2 = self.client.get(reverse('admin_offline_leads_data_api'))
         data2 = api_res2.json()
         self.assertEqual(data2['total_rows'], 2)
-        self.assertIn(['Deepak', '98990xxxxx'], data2['rows'])
+        self.assertIn(['Deepak', '9899001122'], data2['rows'])
 
     def test_section_8_and_11_duplicate_flow_same_branch(self):
         """

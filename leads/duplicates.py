@@ -714,7 +714,9 @@ def process_spreadsheet_row_duplicate_rules(row_data, headers=None, connection=N
             # ─────────────────────────────────────────────────────────
             # DIFFERENT BRANCH AFTER 10 DAYS -> VALID NEW LEAD!
             # ─────────────────────────────────────────────────────────
-            channel = (
+            # Channel/Source attribution: use the connection's selected Channel/Source
+            # (the admin-selected marketing attribution), not a hardcoded "Google Sheets".
+            channel = (connection.channel if connection else None) or (
                 Channel.objects.filter(name__icontains='Google Sheets').first() or
                 Channel.objects.first()
             )
@@ -746,7 +748,9 @@ def process_spreadsheet_row_duplicate_rules(row_data, headers=None, connection=N
         # ─────────────────────────────────────────────────────────
         # NO EXISTING LEAD -> BRAND NEW LEAD!
         # ─────────────────────────────────────────────────────────
-        channel = (
+        # Channel/Source attribution: use the connection's selected Channel/Source
+        # (the admin-selected marketing attribution), not a hardcoded "Google Sheets".
+        channel = (connection.channel if connection else None) or (
             Channel.objects.filter(name__icontains='Google Sheets').first() or
             Channel.objects.first()
         )

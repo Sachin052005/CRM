@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Manager Login - TECHPANDA CRM{% endblock %}
+{% block title %}Sales Head Login - TECHPANDA CRM{% endblock %}
 
 {% block content %}
 <div style="min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
@@ -8,8 +8,8 @@
       <div style="display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); margin-bottom: 12px;">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
       </div>
-      <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main);">Manager Login</h2>
-      <p style="color: var(--text-muted); font-size: 0.875rem;">Manager / Counsellor Portal</p>
+      <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main);">Sales Head Login</h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">Sales Head Portal</p>
     </div>
 
     <form method="POST">
@@ -22,19 +22,19 @@
         <label class="form-label">Password</label>
         {{ form.password }}
       </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+      <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 20px;">
+        <label style="display: none; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
           {{ form.remember_me }} Remember me
         </label>
         <a href="{% url 'login' %}" style="font-size: 0.8rem; color: var(--text-muted);">Switch Portal</a>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; font-weight: 600;">
-        Login as Manager
+        Login as Sales Head
       </button>
     </form>
 
     <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); text-align: center; font-size: 0.825rem; color: var(--text-muted);">
-      Don't have a Manager account? <a href="{% url 'manager_register' %}" style="font-weight: 600;">Register as Manager</a>
+      Don't have a Sales Head account? <a href="{% url 'manager_register' %}" style="font-weight: 600;">Register as Sales Head</a>
     </div>
   </div>
 </div>

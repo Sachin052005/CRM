@@ -10,7 +10,7 @@
   <div class="page-actions">
     <a href="{% url 'admin_followup_create' %}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      + Schedule Follow-up
+       Schedule Follow-up
     </a>
   </div>
 </div>
@@ -77,9 +77,9 @@
       </select>
     </div>
     <div class="filter-col" style="flex: 1 1 140px;">
-      <label>Manager</label>
+      <label>Sales Head</label>
       <select name="manager" class="form-select">
-        <option value="">All Managers</option>
+        <option value="">All Sales Heads</option>
         {% for m in managers %}
         <option value="{{ m.id }}" {% if manager_filter == m.id|stringformat:"i" %}selected{% endif %}>
           {% if m %}{{ m.get_full_name|default:m.username }}{% endif %}
@@ -147,7 +147,7 @@
       <thead>
         <tr>
           <th>Lead</th>
-          <th>Supervising Manager</th>
+          <th>Supervising Sales Head</th>
           <th>Telecaller</th>
           <th>Due Date</th>
           <th>Due Time</th>

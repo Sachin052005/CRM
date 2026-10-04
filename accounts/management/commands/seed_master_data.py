@@ -8,7 +8,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # 1. Standard Channels (Section 27)
-        channels = ['Website', 'Google Ads', 'Facebook', 'Instagram', 'Referral', 'Walk-in', 'Phone', 'WhatsApp']
+        channels = ['Website', 'Google Ads', 'Facebook', 'Instagram', 'Referral', 'Walk-in', 'Phone', 'WhatsApp', 'Google Sheets', 'Manual']
         for ch in channels:
             Channel.objects.get_or_create(name=ch, defaults={'status': 'Active'})
 
