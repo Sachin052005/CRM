@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, api_google_sheets
 
 urlpatterns = [
     # Admin Lead routes
@@ -45,6 +45,12 @@ urlpatterns = [
     path('admin/offline-leads/upload/', views.admin_offline_leads_upload, name='admin_offline_leads_upload'),
     path('admin/offline-leads/api/leads/', views.admin_offline_leads_data_api, name='admin_offline_leads_data_api'),
     path('admin/offline-leads/api/status/', views.admin_offline_leads_status_api, name='admin_offline_leads_status_api'),
+
+    # Clean REST API endpoints for Google Sheets Data Integration
+    path('api/google-sheets/', api_google_sheets.api_google_sheets_list, name='api_google_sheets_list'),
+    path('api/google-sheets/connect/', api_google_sheets.api_google_sheets_connect, name='api_google_sheets_connect'),
+    path('api/google-sheets/<int:connection_id>/', api_google_sheets.api_google_sheets_detail, name='api_google_sheets_detail'),
+    path('api/google-sheets/<int:connection_id>/sync/', api_google_sheets.api_google_sheets_sync, name='api_google_sheets_sync'),
 
 
     # Manager Lead routes

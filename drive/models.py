@@ -8,6 +8,10 @@ class DriveConnection(models.Model):
     folder_url = models.URLField(max_length=500)
     folder_id = models.CharField(max_length=150, db_index=True)
     connection_status = models.CharField(max_length=50, default='Connected')
+    is_active = models.BooleanField(default=True, db_index=True)
+    is_syncing = models.BooleanField(default=False)
+    last_sync_status = models.CharField(max_length=50, default='Success')
+    last_error_message = models.TextField(blank=True, default='')
     last_sync_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -61,9 +65,19 @@ class CallRecording(models.Model):
     )
     drive_connection = models.ForeignKey(
         DriveConnection,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='recordings'
     )
+    telecaller = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='archived_call_recordings'
+    )
+    source_folder_id = models.CharField(max_length=150, blank=True, default='', db_index=True)
     drive_file_id = models.CharField(max_length=150, unique=True, db_index=True)
     file_name = models.CharField(max_length=255)
     mobile_number = models.CharField(max_length=30, blank=True, default='')
@@ -71,6 +85,8 @@ class CallRecording(models.Model):
     drive_url = models.URLField(max_length=500, blank=True, default='')
     mime_type = models.CharField(max_length=50, default='audio/mpeg')
     duration = models.CharField(max_length=20, default='04:32')
+    file_size = models.BigIntegerField(default=0)
+    audio_data = models.BinaryField(null=True, blank=True)
     recording_date = models.DateTimeField(null=True, blank=True)
     match_status = models.CharField(
         max_length=20,

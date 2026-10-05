@@ -119,20 +119,20 @@
           </div>
           <div>
             <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Recordings Found:</div>
-            <div style="font-size: 1.35rem; font-weight: 800; color: #15803d; margin-top: 2px;">
+            <div id="statRecordingsFound" style="font-size: 1.35rem; font-weight: 800; color: #15803d; margin-top: 2px;">
               {{ total_recordings_count }}
             </div>
           </div>
           <div>
             <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Matched Leads:</div>
-            <div style="font-size: 1.35rem; font-weight: 800; color: #15803d; margin-top: 2px;">
+            <div id="statMatchedLeads" style="font-size: 1.35rem; font-weight: 800; color: #15803d; margin-top: 2px;">
               {{ matched_recordings_count }}
             </div>
           </div>
           {% if is_admin or is_manager %}
           <div>
             <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Unmatched Recordings:</div>
-            <div style="font-size: 1.35rem; font-weight: 800; color: #b45309; margin-top: 2px;">
+            <div id="statUnmatchedRecordings" style="font-size: 1.35rem; font-weight: 800; color: #b45309; margin-top: 2px;">
               {{ unmatched_recordings_count }}
             </div>
             <div style="display: none;">Unmatched: {{ unmatched_recordings_count }}</div>
@@ -140,7 +140,7 @@
           {% endif %}
           <div>
             <div style="font-size: 0.78rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.04em;">Last Sync:</div>
-            <div style="font-size: 1rem; font-weight: 600; color: #166534; margin-top: 4px;">
+            <div id="statLastSync" style="font-size: 1rem; font-weight: 600; color: #166534; margin-top: 4px;">
               Just now
             </div>
             <div style="display: none;">{{ latest_connection.last_sync_at|date:"d M Y, h:i A"|default:"Never" }}</div>
@@ -278,7 +278,7 @@
   <div class="crm-card" style="margin-bottom: 24px;">
     <div class="crm-card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
       <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 1.2rem;">🎙</span> CALL RECORDINGS ({{ recordings|length }})
+        <span style="font-size: 1.2rem;">🎙</span> <span id="tableRecordingsCount">CALL RECORDINGS ({{ recordings|length }})</span>
       </h3>
       <span style="font-size: 0.85rem; color: var(--text-muted);">
         {% if is_admin %}Showing organization-wide recordings{% elif is_manager %}Showing recordings for assigned team{% else %}Showing recordings for your assigned leads{% endif %}
@@ -298,9 +298,9 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="callRecordingsTableBody">
           {% for rec in recordings %}
-          <tr>
+          <tr id="recording-row-{{ rec.pk }}">
             <td>
               <div style="font-weight: 600; color: var(--text-main); word-break: break-all;">
                 🎙 {{ rec.file_name }}
@@ -373,7 +373,7 @@
             </td>
           </tr>
           {% empty %}
-          <tr>
+          <tr class="empty-recordings-row">
             <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px 16px;">
               No call recordings found matching the criteria.
             </td>
@@ -557,6 +557,131 @@ window.addEventListener('click', function(event) {
   if (event.target === modal) {
     closeAddDriveModal();
   }
+});
+
+// ==========================================
+// 10-SECOND AUTO SYNC & INCREMENTAL POLLING
+// ==========================================
+const AUTO_SYNC_INTERVAL = 10000; // 10 seconds
+let autoSyncTimer = null;
+let currentConnectionId = {% if latest_connection and is_connected %}{{ latest_connection.pk }}{% else %}null{% endif %};
+let isDriveConnected = {% if is_connected %}true{% else %}false{% endif %};
+let isPollInProgress = false;
+
+function startDriveAutoSync() {
+  if (autoSyncTimer) {
+    clearTimeout(autoSyncTimer);
+    autoSyncTimer = null;
+  }
+  if (isDriveConnected && currentConnectionId) {
+    autoSyncTimer = setTimeout(pollDriveSync, AUTO_SYNC_INTERVAL);
+  }
+}
+
+function pollDriveSync() {
+  if (!isDriveConnected || !currentConnectionId || isPollInProgress) return;
+
+  isPollInProgress = true;
+  fetch(`/drive/api/sync/${currentConnectionId}/`, {
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(data => {
+      if (data.success && data.is_connected) {
+        // Update stats
+        const recEl = document.getElementById('statRecordingsFound');
+        if (recEl && data.total_archived !== undefined) recEl.textContent = data.total_archived;
+
+        const countHeader = document.getElementById('tableRecordingsCount');
+        if (countHeader && data.total_archived !== undefined) countHeader.textContent = `CALL RECORDINGS (${data.total_archived})`;
+
+        const matchedEl = document.getElementById('statMatchedLeads');
+        if (matchedEl && data.matched_count !== undefined) matchedEl.textContent = data.matched_count;
+
+        const unmatchedEl = document.getElementById('statUnmatchedRecordings');
+        if (unmatchedEl && data.unmatched_count !== undefined) unmatchedEl.textContent = data.unmatched_count;
+
+        const lastSyncEl = document.getElementById('statLastSync');
+        if (lastSyncEl) {
+          lastSyncEl.textContent = 'Just now';
+        }
+
+        // Dynamically add new recordings if available
+        if (data.recordings && data.recordings.length > 0) {
+          updateRecordingsTable(data.recordings);
+        }
+      } else if (data.success && !data.is_connected) {
+        isDriveConnected = false;
+      }
+    })
+    .catch(err => {
+      console.warn("Drive auto-sync polling error:", err);
+    })
+    .finally(() => {
+      isPollInProgress = false;
+      if (isDriveConnected && currentConnectionId) {
+        autoSyncTimer = setTimeout(pollDriveSync, AUTO_SYNC_INTERVAL);
+      }
+    });
+}
+
+function updateRecordingsTable(recordings) {
+  const tbody = document.getElementById('callRecordingsTableBody');
+  if (!tbody) return;
+
+  recordings.forEach(rec => {
+    const existingRow = document.getElementById(`recording-row-${rec.id}`);
+    if (!existingRow) {
+      const emptyRow = tbody.querySelector('.empty-recordings-row');
+      if (emptyRow) emptyRow.remove();
+
+      const tr = document.createElement('tr');
+      tr.id = `recording-row-${rec.id}`;
+
+      const leadLink = rec.lead_name
+        ? `<span style="font-weight: 600; color: var(--color-primary);">${escapeHtml(rec.lead_name)}</span>`
+        : '<span style="color: var(--text-muted); font-size: 0.85rem;">—</span>';
+
+      const badge = rec.match_status === 'MATCHED'
+        ? '<span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700;">🟢 Matched</span>'
+        : '<span class="badge" style="background: #fef3c7; color: #b45309; font-weight: 700;">⚠ Unmatched</span>';
+
+      tr.innerHTML = `
+        <td><div style="font-weight: 600; color: var(--text-main); word-break: break-all;">🎙 ${escapeHtml(rec.file_name)}</div></td>
+        <td><span style="font-family: monospace; font-weight: 600; color: var(--text-main);">${escapeHtml(rec.mobile_number || 'None')}</span></td>
+        <td>${leadLink}</td>
+        <td><span style="font-size: 0.85rem; color: var(--text-muted);">📁 Current Folder</span></td>
+        <td><span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">${escapeHtml(rec.duration || '04:32')}</span></td>
+        <td>${badge}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <audio id="audio-rec-${rec.id}" controls preload="none" style="height: 34px; max-width: 200px;">
+              <source src="/drive/stream/${rec.id}/" type="audio/mpeg">
+            </audio>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('audio-rec-${rec.id}').play()" style="padding: 4px 8px; font-size: 0.78rem; font-weight: 600; white-space: nowrap;">▶ Play</button>
+          </div>
+        </td>
+        <td>
+          ${rec.drive_url ? `<a href="${rec.drive_url}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none; font-weight: 600; white-space: nowrap;">Open in Drive</a>` : ''}
+        </td>
+      `;
+      tbody.prepend(tr);
+    }
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  startDriveAutoSync();
 });
 </script>
 {% endblock %}

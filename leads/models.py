@@ -258,6 +258,7 @@ class GoogleSheetConnection(models.Model):
     name = models.CharField(max_length=200)
     spreadsheet_url = models.URLField(max_length=500)
     spreadsheet_id = models.CharField(max_length=150, db_index=True)
+    gid = models.CharField(max_length=50, blank=True, default='0', db_index=True)
     worksheet_name = models.CharField(max_length=150, default='Sheet1')
     branch = models.ForeignKey(
         'branches.Branch',
@@ -348,6 +349,27 @@ class GoogleSheetConnection(models.Model):
     @default_branch_id.setter
     def default_branch_id(self, value):
         self.branch_id = value
+
+    @property
+    def sheet_url(self):
+        return self.spreadsheet_url
+
+    @sheet_url.setter
+    def sheet_url(self, value):
+        self.spreadsheet_url = value
+
+    @property
+    def last_synced_at(self):
+        return self.last_sync_time
+
+    @last_synced_at.setter
+    def last_synced_at(self, value):
+        self.last_sync_time = value
+
+
+# Alias GoogleSheetSource to GoogleSheetConnection for suggested architecture conformity
+GoogleSheetSource = GoogleSheetConnection
+
 
 class GoogleSheetRowMapping(models.Model):
     connection = models.ForeignKey(

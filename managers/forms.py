@@ -25,6 +25,11 @@ class AdminManagerCreateForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.instance.role = UserRole.SALES_HEAD
+
     def clean_username(self):
         username = self.cleaned_data.get('username')
         if User.objects.filter(username__iexact=username).exists():
@@ -49,7 +54,8 @@ class AdminManagerCreateForm(forms.ModelForm):
             else:
                 user_instance = User(
                     username=cleaned_data.get('username'),
-                    email=cleaned_data.get('email')
+                    email=cleaned_data.get('email'),
+                    role=UserRole.SALES_HEAD,
                 )
                 try:
                     validate_password(p1, user=user_instance)

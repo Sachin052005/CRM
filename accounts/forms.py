@@ -72,6 +72,11 @@ class BaseRegistrationForm(forms.ModelForm):
         return cleaned_data
 
 class ManagerRegistrationForm(BaseRegistrationForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.instance.role = UserRole.SALES_HEAD
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.role = UserRole.SALES_HEAD
@@ -81,6 +86,11 @@ class ManagerRegistrationForm(BaseRegistrationForm):
         return user
 
 class TelecallerRegistrationForm(BaseRegistrationForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.instance.role = UserRole.TELECALLER
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.role = UserRole.TELECALLER

@@ -1,12 +1,13 @@
 import logging
+from django.db import models
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse, Http404
-from django.views.decorators.http import require_POST
+from django.http import HttpResponse, Http404, JsonResponse
+from django.views.decorators.http import require_POST, require_http_methods
 from accounts.models import UserRole
-from accounts.permissions import can_access_lead
+from accounts.permissions import can_access_lead, get_accessible_branch_ids
 from activities.utils import log_activity
 from .models import DriveConnection, CallRecording
 from .services import (
@@ -14,6 +15,7 @@ from .services import (
     sync_drive_connection,
     retry_matching_unmatched_recordings,
     get_user_recordings_queryset,
+    STANDARD_SILENT_MP3,
 )
 
 logger = logging.getLogger('crm')
@@ -25,9 +27,21 @@ def drive_dashboard(request):
     Main unified Drive page view accessible across Admin, Manager, and Telecaller roles.
     Presents connected folders, recording statistics, search/filter controls,
     and role-scoped call recordings.
+    Telecallers see only their own folder connections and recordings.
     """
-    connections = DriveConnection.objects.all().order_by('-created_at')
-    latest_connection = connections.first()
+    if request.user.is_telecaller_user:
+        connections = DriveConnection.objects.filter(created_by=request.user).order_by('-created_at')
+    elif request.user.is_sales_head_user:
+        branch_ids = get_accessible_branch_ids(request.user)
+        connections = DriveConnection.objects.filter(
+            models_q = None
+        ) if False else DriveConnection.objects.filter(
+            models.Q(created_by=request.user) | models.Q(created_by__branch_id__in=branch_ids)
+        ).order_by('-created_at').distinct()
+    else:
+        connections = DriveConnection.objects.all().order_by('-created_at')
+
+    latest_connection = connections.filter(is_active=True).first() or connections.first()
 
     # Base recordings scoped to user's permissions
     recordings_qs = get_user_recordings_queryset(request.user)
@@ -39,11 +53,8 @@ def drive_dashboard(request):
 
     if search_mobile:
         recordings_qs = recordings_qs.filter(
-            models_q = None
-        ) if False else recordings_qs.filter(
-            mobile_number__icontains=search_mobile
-        ) | recordings_qs.filter(
-            normalized_mobile_number__icontains=search_mobile
+            models.Q(mobile_number__icontains=search_mobile) |
+            models.Q(normalized_mobile_number__icontains=search_mobile)
         )
 
     if search_file:
@@ -55,7 +66,7 @@ def drive_dashboard(request):
         recordings_qs = recordings_qs.filter(match_status='UNMATCHED')
 
     # Metrics (Section 18)
-    connected_folders_count = connections.count()
+    connected_folders_count = connections.filter(is_active=True).count()
     user_recordings = get_user_recordings_queryset(request.user)
     total_recordings_count = user_recordings.count()
     matched_recordings_count = user_recordings.filter(match_status='MATCHED').count()
@@ -68,7 +79,7 @@ def drive_dashboard(request):
         unmatched_recordings = []
 
     last_sync = latest_connection.last_sync_at if latest_connection else None
-    is_connected = latest_connection is not None and latest_connection.connection_status == 'Connected'
+    is_connected = latest_connection is not None and latest_connection.is_active and latest_connection.connection_status == 'Connected'
     sync_status = 'Active' if is_connected else 'Inactive'
 
     context = {
@@ -142,6 +153,11 @@ def drive_sync(request, connection_id):
     Manually triggers synchronization for a connected Drive folder.
     """
     connection = get_object_or_404(DriveConnection, pk=connection_id)
+
+    # Ownership check: Telecaller can only sync their own connections
+    if request.user.is_telecaller_user and connection.created_by != request.user:
+        raise PermissionDenied("Access denied: You do not own this Drive connection.")
+
     success, message, created, matched = sync_drive_connection(connection, triggered_by=request.user)
 
     if success:
@@ -165,25 +181,32 @@ def drive_sync(request, connection_id):
 def drive_disconnect(request, connection_id):
     """
     Disconnects a Google Drive folder source.
+    Stops future synchronization while preserving all archived audio in MySQL.
     """
-    if not (request.user.is_admin_user or request.user.is_sales_head_user):
-        messages.error(request, "Access denied: Only Admins or Sales Heads can disconnect Drive folders.")
-        return redirect('drive_dashboard')
-
     connection = get_object_or_404(DriveConnection, pk=connection_id)
+
+    # Permission verification
+    if request.user.is_telecaller_user and connection.created_by != request.user:
+        raise PermissionDenied("Access denied: You cannot disconnect another user's Drive folder.")
+
+    if not (request.user.is_telecaller_user or request.user.is_admin_user or request.user.is_sales_head_user):
+        raise PermissionDenied("Access denied.")
+
     name = connection.name
-    connection_pk = connection.pk
-    connection.delete()
+    # Mark disconnected and inactive to stop future synchronization
+    connection.connection_status = 'Disconnected'
+    connection.is_active = False
+    connection.save(update_fields=['connection_status', 'is_active', 'updated_at'])
 
     log_activity(
         user=request.user,
         action="Drive Disconnected",
-        description=f"Disconnected Drive folder '{name}'.",
+        description=f"Disconnected Drive folder '{name}'. Archived audio preserved in MySQL.",
         object_type="DriveConnection",
-        object_id=str(connection_pk),
+        object_id=str(connection.pk),
         request=request
     )
-    messages.success(request, f"Drive folder '{name}' disconnected successfully.")
+    messages.success(request, f"Drive folder '{name}' disconnected successfully. Archived audio remains preserved in MySQL.")
     return redirect('drive_dashboard')
 
 
@@ -215,26 +238,136 @@ def drive_retry_matching(request):
 def drive_stream_recording(request, recording_id):
     """
     Serves recording audio with strict role-based access validation.
+    Streams actual binary audio saved in MySQL.
     """
     recording = get_object_or_404(CallRecording, pk=recording_id)
 
-    # Permission verification
-    if recording.lead:
-        if not can_access_lead(request.user, recording.lead):
+    # Permission verification: Telecaller can only stream their own recordings
+    if request.user.is_telecaller_user:
+        is_owner = (
+            recording.telecaller == request.user or
+            (recording.drive_connection and recording.drive_connection.created_by == request.user) or
+            (recording.lead and recording.lead.assigned_telecaller == request.user)
+        )
+        if not is_owner:
             raise PermissionDenied("Access denied: You do not have permission to access this recording.")
-    else:
-        if not (request.user.is_admin_user or request.user.is_sales_head_user):
-            raise PermissionDenied("Access denied: You do not have permission to access unmatched recordings.")
+    elif request.user.is_sales_head_user:
+        branch_ids = get_accessible_branch_ids(request.user)
+        allowed = (
+            (recording.lead and (recording.lead.assigned_sales_head == request.user or recording.lead.branch_id in branch_ids)) or
+            (recording.telecaller and recording.telecaller.branch_id in branch_ids) or
+            (recording.drive_connection and recording.drive_connection.created_by and recording.drive_connection.created_by.branch_id in branch_ids)
+        )
+        if not allowed:
+            raise PermissionDenied("Access denied: You do not have permission to access this recording.")
 
-    # Return audio stream
-    # Silent MP3 sample frame for browser player playback
-    silent_mp3_bytes = (
-        b'\xff\xfb\x90\x44\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-    )
-    response = HttpResponse(silent_mp3_bytes, content_type=recording.mime_type or 'audio/mpeg')
+    # Return audio stream from MySQL binary storage
+    content_type = recording.mime_type or 'audio/mpeg'
+    if recording.audio_data:
+        audio_content = bytes(recording.audio_data)
+    else:
+        audio_content = STANDARD_SILENT_MP3
+
+    response = HttpResponse(audio_content, content_type=content_type)
     response['Content-Disposition'] = f'inline; filename="{recording.file_name}"'
+    response['Content-Length'] = str(len(audio_content))
     response['Accept-Ranges'] = 'bytes'
     return response
+
+
+@login_required
+def drive_api_sync(request, connection_id):
+    """
+    Endpoint for 10-second automatic polling synchronization.
+    Runs incremental sync, downloads any new audio files into MySQL,
+    and returns JSON status with updated counts.
+    """
+    connection = get_object_or_404(DriveConnection, pk=connection_id)
+
+    # Permission verification
+    if request.user.is_telecaller_user and connection.created_by != request.user:
+        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+    if not connection.is_active or connection.connection_status == 'Disconnected':
+        return JsonResponse({
+            'success': True,
+            'is_connected': False,
+            'connection_id': connection.pk,
+            'connection_status': 'Disconnected',
+            'total_archived': connection.recordings.count(),
+            'new_files': 0,
+            'message': 'Folder is disconnected.',
+        })
+
+    success, message, created, matched = sync_drive_connection(connection, triggered_by=request.user)
+    connection.refresh_from_db()
+
+    # Get recent recordings for this connection
+    recordings = connection.recordings.select_related('lead')[:10]
+    rec_list = [
+        {
+            'id': r.pk,
+            'file_name': r.file_name,
+            'mobile_number': r.normalized_mobile_number or r.mobile_number,
+            'duration': r.duration,
+            'match_status': r.match_status,
+            'lead_name': r.lead.name if r.lead else None,
+            'lead_id': r.lead.pk if r.lead else None,
+            'drive_url': r.drive_url,
+        }
+        for r in recordings
+    ]
+
+    return JsonResponse({
+        'success': True,
+        'is_connected': connection.is_active and connection.connection_status == 'Connected',
+        'connection_id': connection.pk,
+        'folder_name': connection.name,
+        'connection_status': connection.connection_status,
+        'last_sync_status': connection.last_sync_status,
+        'last_sync_at': connection.last_sync_at.isoformat() if connection.last_sync_at else None,
+        'total_archived': connection.recordings.count(),
+        'matched_count': connection.matched_recordings_count,
+        'unmatched_count': connection.unmatched_recordings_count,
+        'new_files': created,
+        'newly_matched': matched,
+        'message': message,
+        'recordings': rec_list,
+    })
+
+
+@login_required
+def drive_api_status(request):
+    """
+    Returns latest connection status and metrics for the logged-in user.
+    """
+    if request.user.is_telecaller_user:
+        connection = DriveConnection.objects.filter(created_by=request.user, is_active=True).first()
+        recordings_count = CallRecording.objects.filter(
+            models.Q(telecaller=request.user) |
+            models.Q(drive_connection__created_by=request.user) |
+            models.Q(lead__assigned_telecaller=request.user)
+        ).distinct().count()
+    else:
+        connection = DriveConnection.objects.filter(is_active=True).first()
+        recordings_count = CallRecording.objects.count()
+
+    if not connection:
+        return JsonResponse({
+            'success': True,
+            'is_connected': False,
+            'total_archived': recordings_count,
+        })
+
+    return JsonResponse({
+        'success': True,
+        'is_connected': connection.is_active and connection.connection_status == 'Connected',
+        'connection_id': connection.pk,
+        'folder_name': connection.name,
+        'connection_status': connection.connection_status,
+        'last_sync_at': connection.last_sync_at.isoformat() if connection.last_sync_at else None,
+        'total_archived': recordings_count,
+        'matched_count': connection.matched_recordings_count,
+        'unmatched_count': connection.unmatched_recordings_count,
+    })
+

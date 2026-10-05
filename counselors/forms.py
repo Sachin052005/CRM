@@ -25,6 +25,8 @@ class AdminCounselorCreateForm(forms.ModelForm):
 
     def __init__(self, *args, allowed_branches=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.instance.role = UserRole.COUNSELOR
         from branches.models import Branch
         self.fields['branch'].queryset = allowed_branches if allowed_branches is not None else Branch.objects.none()
 
@@ -52,7 +54,8 @@ class AdminCounselorCreateForm(forms.ModelForm):
             else:
                 user_instance = User(
                     username=cleaned_data.get('username'),
-                    email=cleaned_data.get('email')
+                    email=cleaned_data.get('email'),
+                    role=UserRole.COUNSELOR,
                 )
                 try:
                     validate_password(p1, user=user_instance)

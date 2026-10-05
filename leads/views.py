@@ -1155,10 +1155,14 @@ def admin_google_sheet_connect(request):
     stored_mapping['headers'] = headers
     stored_mapping['rows'] = rows
 
+    from services.google_sheets_service import extract_gid
+    gid = extract_gid(url) or '0'
+
     if not conn:
         conn = GoogleSheetConnection.objects.create(
             spreadsheet_id=spreadsheet_id,
             worksheet_name=worksheet_name,
+            gid=gid,
             name=final_name,
             spreadsheet_url=url,
             is_active=True,
@@ -1174,6 +1178,7 @@ def admin_google_sheet_connect(request):
         conn.spreadsheet_url = url
         conn.name = final_name
         conn.worksheet_name = worksheet_name
+        conn.gid = gid
         conn.is_active = True
         conn.assignment_method = 'Automatic'
         conn.last_sync_status = 'Connected'

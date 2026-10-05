@@ -33,6 +33,11 @@ class AdminTelecallerCreateForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.instance.role = UserRole.TELECALLER
+
     def clean_username(self):
         username = self.cleaned_data.get('username')
         if User.objects.filter(username__iexact=username).exists():
@@ -73,7 +78,8 @@ class AdminTelecallerCreateForm(forms.ModelForm):
             else:
                 user_instance = User(
                     username=cleaned_data.get('username'),
-                    email=cleaned_data.get('email')
+                    email=cleaned_data.get('email'),
+                    role=UserRole.TELECALLER,
                 )
                 try:
                     validate_password(p1, user=user_instance)
@@ -184,6 +190,8 @@ class BranchHeadTelecallerCreateForm(forms.ModelForm):
 
     def __init__(self, *args, branch=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.instance.role = UserRole.TELECALLER
         self._branch = branch
         if branch is not None:
             self.fields['counselor'].queryset = User.objects.filter(
@@ -222,7 +230,8 @@ class BranchHeadTelecallerCreateForm(forms.ModelForm):
             else:
                 user_instance = User(
                     username=cleaned_data.get('username'),
-                    email=cleaned_data.get('email')
+                    email=cleaned_data.get('email'),
+                    role=UserRole.TELECALLER,
                 )
                 try:
                     validate_password(p1, user=user_instance)

@@ -23,6 +23,8 @@ class BranchHeadCreateForm(forms.ModelForm):
 
     def __init__(self, *args, allowed_branches=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.instance.role = UserRole.BRANCH_HEAD
         from branches.models import Branch
         self.fields['branch'].queryset = allowed_branches if allowed_branches is not None else Branch.objects.none()
 
@@ -50,7 +52,8 @@ class BranchHeadCreateForm(forms.ModelForm):
             else:
                 user_instance = User(
                     username=cleaned_data.get('username'),
-                    email=cleaned_data.get('email')
+                    email=cleaned_data.get('email'),
+                    role=UserRole.BRANCH_HEAD,
                 )
                 try:
                     validate_password(p1, user=user_instance)
@@ -109,6 +112,11 @@ class BranchHeadCounselorCreateForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.instance.role = UserRole.COUNSELOR
+
     def clean_username(self):
         username = self.cleaned_data.get('username')
         if User.objects.filter(username__iexact=username).exists():
@@ -133,7 +141,8 @@ class BranchHeadCounselorCreateForm(forms.ModelForm):
             else:
                 user_instance = User(
                     username=cleaned_data.get('username'),
-                    email=cleaned_data.get('email')
+                    email=cleaned_data.get('email'),
+                    role=UserRole.COUNSELOR,
                 )
                 try:
                     validate_password(p1, user=user_instance)
